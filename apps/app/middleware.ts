@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { updateSession } from "@/lib/supabase/middleware"
+import { updateSession } from "./lib/supabase/middleware"
 
 export async function middleware(request: NextRequest) {
   // Only protect /reps/[id] routes (rep detail pages)
