@@ -1,8 +1,6 @@
-import { AppHeader } from "@/components/shell/app-header"
-import { DateRangePicker } from "@/components/dashboard/date-range-picker"
 import { createClient } from "@/lib/supabase/server"
-import { mockTeamSummary, mockCoachingInsights, mockReps } from "@/lib/mock-data"
 import { DashboardClient } from "./dashboard-client"
+import { mockTeamSummary, mockReps, mockCoachingInsights } from "@/lib/mock-data"
 
 export const dynamic = "force-dynamic"
 
@@ -25,8 +23,7 @@ export default async function DashboardPage() {
       .order("opened_at", { ascending: false })
 
     if (repsError || teamsError || coachingError || !repsData?.length) {
-      console.log("[Dashboard] Falling back to mock data:", { repsError, teamsError, coachingError })
-      return <FallbackDashboard />
+      return <DashboardClient reps={mockReps} teamSummary={mockTeamSummary} coachingInsights={mockCoachingInsights} />
     }
 
     const reps = repsData.map((r: any) => ({
@@ -59,13 +56,13 @@ export default async function DashboardPage() {
     }
 
     const sortedByScore = [...reps].sort((a: any, b: any) => b.scores.topRepSimilarity - a.scores.topRepSimilarity)
-    const topCohort = sortedByScore.slice(0, Math.ceil(sortedByScore.length * 0.25))
+    const topCohort = sortedByScore.slice(0, Math.max(1, Math.ceil(sortedByScore.length * 0.25)))
 
     const teamSummary = {
       totalReps: reps.length,
       repsDrifting: reps.filter((r: any) => r.trend === "drifting").length,
       repsImproving: reps.filter((r: any) => r.trend === "improving").length,
-      coachingOpportunitiesThisWeek: coachingData?.filter((i: any) => i.status !== "coached").length || 0,
+      coachingOpportunitiesThisWeek: (coachingData || []).filter((i: any) => i.status !== "coached").length,
       avgSignalConfidence: calcAvg(reps.map((r: any) => r.scores.signalConfidence)),
       patternShifts: mockTeamSummary.patternShifts,
       repsNeedingAttention: reps.filter((r: any) => r.trend === "drifting" || r.trend === "at-risk"),
@@ -87,13 +84,13 @@ export default async function DashboardPage() {
       },
     }
 
-    const coachingInsights = coachingData.map((c: any) => ({
+    const coachingInsights = (coachingData || []).map((c: any) => ({
       id: c.id,
       tenantId: c.organization_id,
       repId: c.rep_id,
       repName: reps.find((r: any) => r.id === c.rep_id)?.name || "",
       teamId: c.team_id || "",
-      teamName: teamsData?.find((t: any) => t.id === c.team_id)?.name || "",
+      teamName: (teamsData || []).find((t: any) => t.id === c.team_id)?.name || "",
       managerId: "",
       severity: c.severity,
       status: c.status,
@@ -106,21 +103,8 @@ export default async function DashboardPage() {
       notes: [],
     }))
 
-    return (
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <DashboardClient reps={reps} teamSummary={teamSummary} coachingInsights={coachingInsights} />
-      </div>
-    )
+    return <DashboardClient reps={reps} teamSummary={teamSummary} coachingInsights={coachingInsights} />
   } catch (error) {
-    console.error("[Dashboard] Error:", error)
-    return <FallbackDashboard />
+    return <DashboardClient reps={mockReps} teamSummary={mockTeamSummary} coachingInsights={mockCoachingInsights} />
   }
-}
-
-function FallbackDashboard() {
-  return (
-    <div className="flex flex-col flex-1 overflow-hidden">
-      <DashboardClient reps={mockReps} teamSummary={mockTeamSummary} coachingInsights={mockCoachingInsights} />
-    </div>
-  )
 }
