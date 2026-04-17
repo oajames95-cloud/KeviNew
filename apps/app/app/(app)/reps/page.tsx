@@ -9,7 +9,7 @@ export default async function RepsPage() {
 
   const { data: repsData, error: repsError } = await supabase
     .from("reps")
-    .select("id, organization_id, team_id, full_name, email, role, hire_date, trend, top_rep_similarity, workflow_drift, prospecting_focus_time, follow_up_discipline, prep_quality, signal_confidence")
+    .select("id, organization_id, team_id, full_name, email, role, hire_date, trend, top_rep_similarity, workflow_drift, prospecting_focus_time, follow_up_discipline, outbound_velocity, signal_confidence")
     .order("full_name")
 
   const { data: teamsData, error: teamsError } = await supabase
@@ -42,7 +42,7 @@ export default async function RepsPage() {
       workflowDrift: r.workflow_drift ?? 0,
       prospectingFocusTime: r.prospecting_focus_time ?? 0,
       followUpDiscipline: r.follow_up_discipline ?? 0,
-      prepQuality: r.prep_quality ?? 0,
+      outboundVelocity: r.outbound_velocity ?? 0,
       signalConfidence: r.signal_confidence ?? 0,
     },
     recentActivity: [],
