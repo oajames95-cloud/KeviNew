@@ -1,246 +1,126 @@
 import { AppHeader } from "@/components/shell/app-header"
-import { useMobileSidebar } from "@/components/shell/app-shell"
 import { DateRangePicker } from "@/components/dashboard/date-range-picker"
 import { createClient } from "@/lib/supabase/server"
 import { mockTeamSummary, mockCoachingInsights, mockReps } from "@/lib/mock-data"
 import { DashboardClient } from "./dashboard-client"
-import type { Rep, TeamSummary, CoachingInsight } from "@/types"
 
 export const dynamic = "force-dynamic"
 
 export default async function DashboardPage() {
-  let reps: Rep[] = mockReps
-  let teamSummary: TeamSummary = mockTeamSummary
-  let coachingInsights: CoachingInsight[] = mockCoachingInsights
-
   try {
     const supabase = await createClient()
 
-    // Fetch reps with all score columns
-    const { data: fetchedReps, error: repsError } = await supabase
+    const { data: repsData, error: repsError } = await supabase
       .from("reps")
-      .select(
-        `
-        id,
-        organization_id,
-        team_id,
-        name,
-        email,
-        role,
-        hire_date,
-        trend,
-        score_top_rep_similarity,
-        score_workflow_drift,
-        score_prospecting_focus_time,
-        score_follow_up_discipline,
-        score_outbound_velocity,
-        score_signal_confidence,
-        rep_daily_metrics(
-          date,
-          calls_dialed,
-          meetings_booked,
-          time_prospecting,
-          time_researching,
-          time_in_apollo,
-          time_in_crm,
-          time_in_email,
-          context_switches,
-          focus_blocks_min
-        )
-      `
-      )
-      .order("id")
+      .select("id, organization_id, team_id, full_name, email, role, hire_date, trend, top_rep_similarity, workflow_drift, prospecting_focus_time, follow_up_discipline, outbound_velocity, signal_confidence")
+      .order("full_name")
 
-    if (repsError) {
-      console.error("[v0] Error fetching reps:", repsError)
-    }
-
-    // Fetch teams
-    const { data: teams, error: teamsError } = await supabase
+    const { data: teamsData, error: teamsError } = await supabase
       .from("teams")
       .select("id, name")
 
-    if (teamsError) {
-      console.error("[v0] Error fetching teams:", teamsError)
-    }
-
-    // Fetch coaching items
-    const { data: coachingItems, error: coachingError } = await supabase
+    const { data: coachingData, error: coachingError } = await supabase
       .from("coaching_items")
-      .select(
-        `
-        id,
-        organization_id,
-        rep_id,
-        manager_id,
-        severity,
-        status,
-        theme,
-        reason,
-        recommended_action,
-        flagged_at,
-        updated_at
-      `
-      )
-      .order("severity", { ascending: false })
+      .select("id, organization_id, rep_id, team_id, title, reason, coaching_theme, severity, status, suggested_action, opened_at, updated_at")
+      .order("opened_at", { ascending: false })
 
-    if (coachingError) {
-      console.error("[v0] Error fetching coaching items:", coachingError)
+    if (repsError || teamsError || coachingError || !repsData?.length) {
+      console.log("[Dashboard] Falling back to mock data:", { repsError, teamsError, coachingError })
+      return <FallbackDashboard />
     }
 
-    // Transform data if successful
-    if (fetchedReps && fetchedReps.length > 0 && teams && coachingItems) {
-      const teamMap = new Map(teams.map((t: any) => [t.id, t]))
+    const reps = repsData.map((r: any) => ({
+      id: r.id,
+      tenantId: r.organization_id,
+      teamId: r.team_id,
+      managerId: "",
+      name: r.full_name,
+      email: r.email || "",
+      role: r.role,
+      hireDate: r.hire_date || "",
+      trend: r.trend,
+      scores: {
+        topRepSimilarity: r.top_rep_similarity ?? 0,
+        workflowDrift: r.workflow_drift ?? 0,
+        prospectingFocusTime: r.prospecting_focus_time ?? 0,
+        followUpDiscipline: r.follow_up_discipline ?? 0,
+        outboundVelocity: r.outbound_velocity ?? 0,
+        signalConfidence: r.signal_confidence ?? 0,
+      },
+      recentActivity: [],
+      dataSourceIds: [],
+    }))
 
-      // Transform reps
-      reps = fetchedReps.map((rep: any) => ({
-        id: rep.id,
-        name: rep.name || "Unknown",
-        email: rep.email || "",
-        avatar: "",
-        title: rep.role || "SDR",
-        tenureDays: rep.hire_date
-          ? Math.floor(
-              (Date.now() - new Date(rep.hire_date).getTime()) /
-                (1000 * 60 * 60 * 24)
-            )
-          : 0,
-        trend: rep.trend,
-        scores: {
-          topRepSimilarity: rep.score_top_rep_similarity || 0,
-          workflowDrift: rep.score_workflow_drift || 0,
-          followUpDiscipline: rep.score_follow_up_discipline || 0,
-          prospectingFocusTime: rep.score_prospecting_focus_time || 0,
-          outboundVelocity: rep.score_outbound_velocity || 0,
-          signalConfidence: rep.score_signal_confidence || 0,
-        },
-        recentActivity: (rep.rep_daily_metrics || []).map((metric: any) => ({
-          date: metric.date,
-          callsDialed: metric.calls_dialed || 0,
-          meetingsBooked: metric.meetings_booked || 0,
-          timeProspecting: metric.time_prospecting || 0,
-          timeResearching: metric.time_researching || 0,
-          timeInApollo: metric.time_in_apollo || 0,
-          timeInCRM: metric.time_in_crm || 0,
-          timeInEmail: metric.time_in_email || 0,
-          contextSwitches: metric.context_switches || 0,
-          focusBlocksMin: metric.focus_blocks_min || 0,
-        })),
-      }))
-
-      // Calculate team summary from real data
-      const driftingReps = reps.filter((r) => r.trend === "drifting").length
-      const improvingReps = reps.filter((r) => r.trend === "improving").length
-
-      // Calculate top cohort (top 25% by topRepSimilarity)
-      const sortedByScore = [...reps].sort(
-        (a, b) => b.scores.topRepSimilarity - a.scores.topRepSimilarity
-      )
-      const topCohortSize = Math.ceil(sortedByScore.length * 0.25)
-      const topCohort = sortedByScore.slice(0, topCohortSize)
-
-      // Calculate team median and top cohort benchmarks
-      const calculateMedian = (scores: number[]): number => {
-        const sorted = [...scores].sort((a, b) => a - b)
-        const mid = Math.floor(sorted.length / 2)
-        return sorted.length % 2
-          ? sorted[mid]
-          : (sorted[mid - 1] + sorted[mid]) / 2
-      }
-
-      const calcAvg = (scores: number[]): number =>
-        scores.length > 0
-          ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
-          : 0
-
-      teamSummary = {
-        totalReps: reps.length,
-        repsDrifting: driftingReps,
-        repsImproving: improvingReps,
-        coachingOpportunitiesThisWeek: coachingItems.filter(
-          (i: any) => i.status !== "coached"
-        ).length,
-        avgSignalConfidence: calcAvg(reps.map((r) => r.scores.signalConfidence)),
-        patternShifts: mockTeamSummary.patternShifts,
-        repsNeedingAttention: reps.filter(
-          (r) => r.trend === "drifting" || r.trend === "at-risk"
-        ),
-        topCohortBenchmark: {
-          topRepSimilarity: calcAvg(topCohort.map((r) => r.scores.topRepSimilarity)),
-          workflowDrift: calcAvg(topCohort.map((r) => r.scores.workflowDrift)),
-          prospectingFocusTime: calcAvg(
-            topCohort.map((r) => r.scores.prospectingFocusTime)
-          ),
-          followUpDiscipline: calcAvg(topCohort.map((r) => r.scores.followUpDiscipline)),
-          outboundVelocity: calcAvg(topCohort.map((r) => r.scores.outboundVelocity)),
-          signalConfidence: calcAvg(topCohort.map((r) => r.scores.signalConfidence)),
-        },
-        teamMedian: {
-          topRepSimilarity: Math.round(
-            calculateMedian(reps.map((r) => r.scores.topRepSimilarity))
-          ),
-          workflowDrift: Math.round(
-            calculateMedian(reps.map((r) => r.scores.workflowDrift))
-          ),
-          prospectingFocusTime: Math.round(
-            calculateMedian(reps.map((r) => r.scores.prospectingFocusTime))
-          ),
-          followUpDiscipline: Math.round(
-            calculateMedian(reps.map((r) => r.scores.followUpDiscipline))
-          ),
-          outboundVelocity: Math.round(
-            calculateMedian(reps.map((r) => r.scores.outboundVelocity))
-          ),
-          signalConfidence: Math.round(
-            calculateMedian(reps.map((r) => r.scores.signalConfidence))
-          ),
-        },
-      }
-
-      // Transform coaching insights
-      const repMap = new Map(reps.map((r) => [r.id, r]))
-      coachingInsights = coachingItems
-        .slice(0, 5)
-        .map((item: any) => {
-          const rep = repMap.get(item.rep_id)
-          return {
-            id: item.id,
-            tenantId: item.organization_id,
-            repId: item.rep_id,
-            repName: rep?.name || "Unknown Rep",
-            teamId: rep?.id,
-            teamName: "Team",
-            managerId: item.manager_id,
-            severity: item.severity,
-            status: item.status,
-            theme: item.theme,
-            reason: item.reason,
-            recommendedAction: item.recommended_action,
-            flaggedAt: item.flagged_at,
-            updatedAt: item.updated_at,
-            metrics: {},
-            notes: [],
-          }
-        })
+    const calcAvg = (nums: number[]) => nums.length ? Math.round(nums.reduce((a, b) => a + b, 0) / nums.length) : 0
+    const calcMedian = (nums: number[]) => {
+      const sorted = [...nums].sort((a, b) => a - b)
+      const mid = Math.floor(sorted.length / 2)
+      return sorted.length % 2 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2)
     }
+
+    const sortedByScore = [...reps].sort((a: any, b: any) => b.scores.topRepSimilarity - a.scores.topRepSimilarity)
+    const topCohort = sortedByScore.slice(0, Math.ceil(sortedByScore.length * 0.25))
+
+    const teamSummary = {
+      totalReps: reps.length,
+      repsDrifting: reps.filter((r: any) => r.trend === "drifting").length,
+      repsImproving: reps.filter((r: any) => r.trend === "improving").length,
+      coachingOpportunitiesThisWeek: coachingData?.filter((i: any) => i.status !== "coached").length || 0,
+      avgSignalConfidence: calcAvg(reps.map((r: any) => r.scores.signalConfidence)),
+      patternShifts: mockTeamSummary.patternShifts,
+      repsNeedingAttention: reps.filter((r: any) => r.trend === "drifting" || r.trend === "at-risk"),
+      topCohortBenchmark: {
+        topRepSimilarity: calcAvg(topCohort.map((r: any) => r.scores.topRepSimilarity)),
+        workflowDrift: calcAvg(topCohort.map((r: any) => r.scores.workflowDrift)),
+        prospectingFocusTime: calcAvg(topCohort.map((r: any) => r.scores.prospectingFocusTime)),
+        followUpDiscipline: calcAvg(topCohort.map((r: any) => r.scores.followUpDiscipline)),
+        outboundVelocity: calcAvg(topCohort.map((r: any) => r.scores.outboundVelocity)),
+        signalConfidence: calcAvg(topCohort.map((r: any) => r.scores.signalConfidence)),
+      },
+      teamMedian: {
+        topRepSimilarity: calcMedian(reps.map((r: any) => r.scores.topRepSimilarity)),
+        workflowDrift: calcMedian(reps.map((r: any) => r.scores.workflowDrift)),
+        prospectingFocusTime: calcMedian(reps.map((r: any) => r.scores.prospectingFocusTime)),
+        followUpDiscipline: calcMedian(reps.map((r: any) => r.scores.followUpDiscipline)),
+        outboundVelocity: calcMedian(reps.map((r: any) => r.scores.outboundVelocity)),
+        signalConfidence: calcMedian(reps.map((r: any) => r.scores.signalConfidence)),
+      },
+    }
+
+    const coachingInsights = coachingData.map((c: any) => ({
+      id: c.id,
+      tenantId: c.organization_id,
+      repId: c.rep_id,
+      repName: reps.find((r: any) => r.id === c.rep_id)?.name || "",
+      teamId: c.team_id || "",
+      teamName: teamsData?.find((t: any) => t.id === c.team_id)?.name || "",
+      managerId: "",
+      severity: c.severity,
+      status: c.status,
+      theme: c.coaching_theme || "",
+      reason: c.reason || "",
+      recommendedAction: c.suggested_action || "",
+      flaggedAt: c.opened_at,
+      updatedAt: c.updated_at,
+      metrics: {},
+      notes: [],
+    }))
+
+    return (
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <DashboardClient reps={reps} teamSummary={teamSummary} coachingInsights={coachingInsights} />
+      </div>
+    )
   } catch (error) {
-    console.error("[v0] Error fetching dashboard data:", error)
-    // Fall back to mock data on error
+    console.error("[Dashboard] Error:", error)
+    return <FallbackDashboard />
   }
+}
 
+function FallbackDashboard() {
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
-      <AppHeader
-        title="Team Dashboard"
-        subtitle="West Enterprise"
-      >
-        <DateRangePicker value="7d" onChange={() => {}} />
-      </AppHeader>
-      <DashboardClient
-        reps={reps}
-        teamSummary={teamSummary}
-        coachingInsights={coachingInsights}
-      />
+      <DashboardClient reps={mockReps} teamSummary={mockTeamSummary} coachingInsights={mockCoachingInsights} />
     </div>
   )
 }
