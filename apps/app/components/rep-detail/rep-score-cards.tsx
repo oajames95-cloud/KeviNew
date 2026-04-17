@@ -29,9 +29,9 @@ const METRICS: {
     desc: "Speed and consistency of follow-ups on open threads",
   },
   {
-    key: "prepQuality",
-    label: "Pre-call Prep",
-    desc: "Research time before outreach vs. top-cohort average",
+    key: "outboundVelocity",
+    label: "Outbound Velocity",
+    desc: "Emails, calls, and sequences per day vs. top-cohort average",
   },
   {
     key: "signalConfidence",
