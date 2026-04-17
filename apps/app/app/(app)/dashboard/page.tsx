@@ -1,128 +1,246 @@
-"use client"
-
-import { useState, useEffect } from "react"
 import { AppHeader } from "@/components/shell/app-header"
 import { useMobileSidebar } from "@/components/shell/app-shell"
-import { SummaryCards } from "@/components/dashboard/summary-cards"
-import { PatternHealth } from "@/components/dashboard/pattern-health"
-import { AttentionTable } from "@/components/dashboard/attention-table"
-import { PatternShiftsFeed } from "@/components/dashboard/pattern-shifts-feed"
-import { CoachingQueuePanel } from "@/components/dashboard/coaching-queue-panel"
-import { CohortComparison } from "@/components/dashboard/cohort-comparison"
 import { DateRangePicker } from "@/components/dashboard/date-range-picker"
-import { QuickActions } from "@/components/dashboard/quick-actions"
-import { TeamOutcomes } from "@/components/dashboard/team-outcomes"
-import { TopPerformerBaseline } from "@/components/shared/top-performer-baseline"
+import { createClient } from "@/lib/supabase/server"
 import { mockTeamSummary, mockCoachingInsights, mockReps } from "@/lib/mock-data"
-import { getTeamReps } from "@/lib/supabase-queries-client"
+import { DashboardClient } from "./dashboard-client"
+import type { Rep, TeamSummary, CoachingInsight } from "@/types"
 
-export default function DashboardPage() {
-  const { toggle } = useMobileSidebar()
-  const [dateRange, setDateRange] = useState("7d")
-  const [reps, setReps] = useState(mockReps)
-  const [isLoading, setIsLoading] = useState(true)
+export const dynamic = "force-dynamic"
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        setIsLoading(true)
-        // Fetch team reps from Supabase - use seed data team UUID
-        const teamId = "b0000000-0000-0000-0000-000000000001"
-        const teamReps = await getTeamReps(teamId)
+export default async function DashboardPage() {
+  let reps: Rep[] = mockReps
+  let teamSummary: TeamSummary = mockTeamSummary
+  let coachingInsights: CoachingInsight[] = mockCoachingInsights
 
-        if (teamReps && teamReps.length > 0) {
-          // Transform Supabase data to match the app's data structure
-          const transformedReps = teamReps.map((rep: any) => ({
-            id: rep.id,
-            name: rep.name || "Unknown",
-            email: rep.email || "",
-            avatar: rep.avatar_url || "",
-            title: rep.role || "SDR",
-            tenureDays: rep.hire_date ? Math.floor((Date.now() - new Date(rep.hire_date).getTime()) / (1000 * 60 * 60 * 24)) : 0,
-            scores: {
-              topRepSimilarity: rep.score_top_rep_similarity || 0,
-              workflowDrift: 0,
-              followUpDiscipline: rep.score_follow_up_discipline || 0,
-              prospectingFocusTime: rep.score_prospecting_focus_time || 0,
-              prepQuality: rep.score_prep_quality || 0,
-              signalConfidence: 0,
-            },
-            recentActivity: (rep.rep_daily_metrics || []).map((metric: any) => ({
-              date: metric.date,
-              callsDialed: metric.calls_dialed || 0,
-              meetingsBooked: metric.meetings_booked || 0,
-              timeProspecting: metric.time_prospecting || 0,
-              timeResearching: metric.time_researching || 0,
-              timeInApollo: metric.time_in_apollo || 0,
-              timeInCRM: metric.time_in_crm || 0,
-              timeInEmail: metric.time_in_email || 0,
-              contextSwitches: metric.context_switches || 0,
-              focusBlocksMin: metric.focus_blocks_min || 0,
-            })) || [],
-          }))
-          setReps(transformedReps)
-        }
-      } catch (error) {
-        console.error("[v0] Error fetching dashboard data:", error)
-        // Fall back to mock data on error
-      } finally {
-        setIsLoading(false)
-      }
+  try {
+    const supabase = await createClient()
+
+    // Fetch reps with all score columns
+    const { data: fetchedReps, error: repsError } = await supabase
+      .from("reps")
+      .select(
+        `
+        id,
+        organization_id,
+        team_id,
+        name,
+        email,
+        role,
+        hire_date,
+        trend,
+        score_top_rep_similarity,
+        score_workflow_drift,
+        score_prospecting_focus_time,
+        score_follow_up_discipline,
+        score_outbound_velocity,
+        score_signal_confidence,
+        rep_daily_metrics(
+          date,
+          calls_dialed,
+          meetings_booked,
+          time_prospecting,
+          time_researching,
+          time_in_apollo,
+          time_in_crm,
+          time_in_email,
+          context_switches,
+          focus_blocks_min
+        )
+      `
+      )
+      .order("id")
+
+    if (repsError) {
+      console.error("[v0] Error fetching reps:", repsError)
     }
 
-    fetchData()
-  }, [])
+    // Fetch teams
+    const { data: teams, error: teamsError } = await supabase
+      .from("teams")
+      .select("id, name")
+
+    if (teamsError) {
+      console.error("[v0] Error fetching teams:", teamsError)
+    }
+
+    // Fetch coaching items
+    const { data: coachingItems, error: coachingError } = await supabase
+      .from("coaching_items")
+      .select(
+        `
+        id,
+        organization_id,
+        rep_id,
+        manager_id,
+        severity,
+        status,
+        theme,
+        reason,
+        recommended_action,
+        flagged_at,
+        updated_at
+      `
+      )
+      .order("severity", { ascending: false })
+
+    if (coachingError) {
+      console.error("[v0] Error fetching coaching items:", coachingError)
+    }
+
+    // Transform data if successful
+    if (fetchedReps && fetchedReps.length > 0 && teams && coachingItems) {
+      const teamMap = new Map(teams.map((t: any) => [t.id, t]))
+
+      // Transform reps
+      reps = fetchedReps.map((rep: any) => ({
+        id: rep.id,
+        name: rep.name || "Unknown",
+        email: rep.email || "",
+        avatar: "",
+        title: rep.role || "SDR",
+        tenureDays: rep.hire_date
+          ? Math.floor(
+              (Date.now() - new Date(rep.hire_date).getTime()) /
+                (1000 * 60 * 60 * 24)
+            )
+          : 0,
+        trend: rep.trend,
+        scores: {
+          topRepSimilarity: rep.score_top_rep_similarity || 0,
+          workflowDrift: rep.score_workflow_drift || 0,
+          followUpDiscipline: rep.score_follow_up_discipline || 0,
+          prospectingFocusTime: rep.score_prospecting_focus_time || 0,
+          outboundVelocity: rep.score_outbound_velocity || 0,
+          signalConfidence: rep.score_signal_confidence || 0,
+        },
+        recentActivity: (rep.rep_daily_metrics || []).map((metric: any) => ({
+          date: metric.date,
+          callsDialed: metric.calls_dialed || 0,
+          meetingsBooked: metric.meetings_booked || 0,
+          timeProspecting: metric.time_prospecting || 0,
+          timeResearching: metric.time_researching || 0,
+          timeInApollo: metric.time_in_apollo || 0,
+          timeInCRM: metric.time_in_crm || 0,
+          timeInEmail: metric.time_in_email || 0,
+          contextSwitches: metric.context_switches || 0,
+          focusBlocksMin: metric.focus_blocks_min || 0,
+        })),
+      }))
+
+      // Calculate team summary from real data
+      const driftingReps = reps.filter((r) => r.trend === "drifting").length
+      const improvingReps = reps.filter((r) => r.trend === "improving").length
+
+      // Calculate top cohort (top 25% by topRepSimilarity)
+      const sortedByScore = [...reps].sort(
+        (a, b) => b.scores.topRepSimilarity - a.scores.topRepSimilarity
+      )
+      const topCohortSize = Math.ceil(sortedByScore.length * 0.25)
+      const topCohort = sortedByScore.slice(0, topCohortSize)
+
+      // Calculate team median and top cohort benchmarks
+      const calculateMedian = (scores: number[]): number => {
+        const sorted = [...scores].sort((a, b) => a - b)
+        const mid = Math.floor(sorted.length / 2)
+        return sorted.length % 2
+          ? sorted[mid]
+          : (sorted[mid - 1] + sorted[mid]) / 2
+      }
+
+      const calcAvg = (scores: number[]): number =>
+        scores.length > 0
+          ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+          : 0
+
+      teamSummary = {
+        totalReps: reps.length,
+        repsDrifting: driftingReps,
+        repsImproving: improvingReps,
+        coachingOpportunitiesThisWeek: coachingItems.filter(
+          (i: any) => i.status !== "coached"
+        ).length,
+        avgSignalConfidence: calcAvg(reps.map((r) => r.scores.signalConfidence)),
+        patternShifts: mockTeamSummary.patternShifts,
+        repsNeedingAttention: reps.filter(
+          (r) => r.trend === "drifting" || r.trend === "at-risk"
+        ),
+        topCohortBenchmark: {
+          topRepSimilarity: calcAvg(topCohort.map((r) => r.scores.topRepSimilarity)),
+          workflowDrift: calcAvg(topCohort.map((r) => r.scores.workflowDrift)),
+          prospectingFocusTime: calcAvg(
+            topCohort.map((r) => r.scores.prospectingFocusTime)
+          ),
+          followUpDiscipline: calcAvg(topCohort.map((r) => r.scores.followUpDiscipline)),
+          outboundVelocity: calcAvg(topCohort.map((r) => r.scores.outboundVelocity)),
+          signalConfidence: calcAvg(topCohort.map((r) => r.scores.signalConfidence)),
+        },
+        teamMedian: {
+          topRepSimilarity: Math.round(
+            calculateMedian(reps.map((r) => r.scores.topRepSimilarity))
+          ),
+          workflowDrift: Math.round(
+            calculateMedian(reps.map((r) => r.scores.workflowDrift))
+          ),
+          prospectingFocusTime: Math.round(
+            calculateMedian(reps.map((r) => r.scores.prospectingFocusTime))
+          ),
+          followUpDiscipline: Math.round(
+            calculateMedian(reps.map((r) => r.scores.followUpDiscipline))
+          ),
+          outboundVelocity: Math.round(
+            calculateMedian(reps.map((r) => r.scores.outboundVelocity))
+          ),
+          signalConfidence: Math.round(
+            calculateMedian(reps.map((r) => r.scores.signalConfidence))
+          ),
+        },
+      }
+
+      // Transform coaching insights
+      const repMap = new Map(reps.map((r) => [r.id, r]))
+      coachingInsights = coachingItems
+        .slice(0, 5)
+        .map((item: any) => {
+          const rep = repMap.get(item.rep_id)
+          return {
+            id: item.id,
+            tenantId: item.organization_id,
+            repId: item.rep_id,
+            repName: rep?.name || "Unknown Rep",
+            teamId: rep?.id,
+            teamName: "Team",
+            managerId: item.manager_id,
+            severity: item.severity,
+            status: item.status,
+            theme: item.theme,
+            reason: item.reason,
+            recommendedAction: item.recommended_action,
+            flaggedAt: item.flagged_at,
+            updatedAt: item.updated_at,
+            metrics: {},
+            notes: [],
+          }
+        })
+    }
+  } catch (error) {
+    console.error("[v0] Error fetching dashboard data:", error)
+    // Fall back to mock data on error
+  }
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       <AppHeader
         title="Team Dashboard"
         subtitle="West Enterprise"
-        onMenuClick={toggle}
       >
-        <DateRangePicker value={dateRange} onChange={setDateRange} />
+        <DateRangePicker value="7d" onChange={() => {}} />
       </AppHeader>
-
-      <main className="flex-1 overflow-y-auto">
-        <div className="p-4 lg:p-6 space-y-5 max-w-[1600px]">
-          {/* Summary KPI strip */}
-          <SummaryCards summary={mockTeamSummary} />
-
-          {/* Top Performer Baseline - Central Definition */}
-          <TopPerformerBaseline benchmark={mockTeamSummary.topCohortBenchmark} />
-
-          {/* Team Outcomes - How workflow correlates to results */}
-          <TeamOutcomes reps={reps} />
-
-          {/* Main content grid: left column data-heavy, right column actions */}
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-            {/* Left column: primary data views - spans 2 columns */}
-            <div className="xl:col-span-2 space-y-5">
-              {/* Pattern health + cohort comparison side by side on larger screens */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                <PatternHealth
-                  topCohort={mockTeamSummary.topCohortBenchmark}
-                  teamMedian={mockTeamSummary.teamMedian}
-                />
-                <CohortComparison
-                  topCohort={mockTeamSummary.topCohortBenchmark}
-                  teamMedian={mockTeamSummary.teamMedian}
-                />
-              </div>
-
-              {/* Reps needing attention table */}
-              <AttentionTable reps={mockTeamSummary.repsNeedingAttention} />
-            </div>
-
-            {/* Right column: feeds and actions */}
-            <div className="space-y-5">
-              <CoachingQueuePanel insights={mockCoachingInsights} />
-              <PatternShiftsFeed shifts={mockTeamSummary.patternShifts} />
-              <QuickActions />
-            </div>
-          </div>
-        </div>
-      </main>
+      <DashboardClient
+        reps={reps}
+        teamSummary={teamSummary}
+        coachingInsights={coachingInsights}
+      />
     </div>
   )
 }
