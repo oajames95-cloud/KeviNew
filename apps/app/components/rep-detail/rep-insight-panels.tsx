@@ -28,13 +28,13 @@ const DIFFERENCES = (rep: Rep) => [
     severity: rep.scores.followUpDiscipline < 60 ? "critical" : rep.scores.followUpDiscipline < 75 ? "warning" : "good",
   },
   {
-    metric: "Pre-call Prep",
-    repVal: rep.scores.prepQuality,
-    topVal: benchmark.prepQuality,
-    better: rep.scores.prepQuality >= benchmark.prepQuality,
-    delta: rep.scores.prepQuality - benchmark.prepQuality,
+    metric: "Outbound Velocity",
+    repVal: rep.scores.outboundVelocity,
+    topVal: benchmark.outboundVelocity,
+    better: rep.scores.outboundVelocity >= benchmark.outboundVelocity,
+    delta: rep.scores.outboundVelocity - benchmark.outboundVelocity,
     context: "Top reps average 28+ min/day in research before outreach. Less prep = lower connect quality.",
-    severity: rep.scores.prepQuality < 60 ? "critical" : rep.scores.prepQuality < 75 ? "warning" : "good",
+    severity: rep.scores.outboundVelocity < 60 ? "critical" : rep.scores.outboundVelocity < 75 ? "warning" : "good",
   },
   {
     metric: "Prospecting Focus",
@@ -51,7 +51,7 @@ const SUGGESTED_ACTIONS = (rep: Rep) => {
   const actions = []
   if (rep.scores.followUpDiscipline < 60)
     actions.push({ label: "Audit open threads together", desc: "Pull up the sequencer in the 1:1. Find the 3 most recent threads that went cold and walk through what happened. Set a daily EOD follow-up habit." })
-  if (rep.scores.prepQuality < 60)
+  if (rep.scores.outboundVelocity < 60)
     actions.push({ label: "Build a pre-call research habit", desc: "Share the top-cohort research checklist (LinkedIn, CRM, news). Suggest 15-min research blocks before each calling cluster. Consider co-researching one prospect together." })
   if (rep.scores.prospectingFocusTime < 60)
     actions.push({ label: "Protect prospecting blocks", desc: "Look at the rep's calendar together. Identify what's fragmenting the morning. Block 9–11am as a no-Slack, no-meetings prospecting window for one week." })
