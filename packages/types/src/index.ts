@@ -63,7 +63,6 @@ export interface Rep {
 
 export interface WorkflowActivity {
   date: string
-  // Objective workflow time buckets (minutes)
   timeProspecting: number
   timeResearching: number
   timeBuildingLists: number
@@ -74,19 +73,18 @@ export interface WorkflowActivity {
   timeInEmail: number
   timeInCalendar: number
   idleTime: number
-  // Derived engagement metrics
   contextSwitches: number
-  focusBlocksMin: number  // uninterrupted prospecting/research
+  focusBlocksMin: number
   workdayMinutes: number
 }
 
 export interface PatternScore {
-  topRepSimilarity: number        // 0–100: how closely rep mirrors top performers (based on workflow mix)
-  workflowDrift: number           // 0–100: deviation from winning workflow habits (higher = more drift)
-  prospectingFocusTime: number    // 0–100: uninterrupted prospecting blocks quality
-  followUpDiscipline: number      // 0–100: timeliness & consistency of follow-ups  
-  prepQuality: number             // 0–100: research time before outreach
-  signalConfidence: number        // 0–100: reliability of the underlying browser activity data
+  topRepSimilarity: number
+  workflowDrift: number
+  prospectingFocusTime: number
+  followUpDiscipline: number
+  outboundVelocity: number
+  signalConfidence: number
 }
 
 export interface TopCohortBenchmark {
@@ -94,7 +92,7 @@ export interface TopCohortBenchmark {
   workflowDrift: number
   prospectingFocusTime: number
   followUpDiscipline: number
-  prepQuality: number
+  outboundVelocity: number
   signalConfidence: number
 }
 
@@ -103,12 +101,11 @@ export interface TopCohortBenchmark {
 // ─────────────────────────────────────────────
 
 export interface DailyActivity extends WorkflowActivity {
-  // Sales outcomes
   callsDialed: number
-  connectRate: number   // percentage
+  connectRate: number
   emailsSent: number
   meetingsBooked: number
-  followUpRate: number  // percentage
+  followUpRate: number
 }
 
 export interface PatternShift {
@@ -118,7 +115,7 @@ export interface PatternShift {
   date: string
   metric: keyof PatternScore
   direction: "up" | "down"
-  magnitude: number   // delta
+  magnitude: number
   notes?: string
 }
 
@@ -131,7 +128,7 @@ export type CoachingStatus = "new" | "reviewing" | "coached" | "watchlist"
 export type CoachingTheme =
   | "workflow mix"
   | "prospecting focus"
-  | "prep quality"
+  | "outbound velocity"
   | "follow-up discipline"
   | "winning habits"
   | "focus blocks"
