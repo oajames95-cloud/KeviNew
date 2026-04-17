@@ -1,123 +1,103 @@
-"use client"
-
-import { useState } from "react"
 import { AppHeader } from "@/components/shell/app-header"
 import { useMobileSidebar } from "@/components/shell/app-shell"
-import { CoachingList } from "@/components/coaching/coaching-list"
-import { CoachingDrawer } from "@/components/coaching/coaching-drawer"
-import { mockCoachingInsights } from "@/lib/mock-data"
-import type { CoachingInsight, CoachingSeverity, CoachingStatus } from "@/types"
-import { cn } from "@/lib/utils"
+import { createClient } from "@/lib/supabase/server"
+import { mockCoachingInsights, mockReps, mockTeams } from "@/lib/mock-data"
+import { CoachingPageClient } from "./coaching-page-client"
+import type { CoachingInsight } from "@/types"
 
-const SEVERITY_FILTERS: { label: string; value: CoachingSeverity | "all" }[] = [
-  { label: "All", value: "all" },
-  { label: "Critical", value: "critical" },
-  { label: "High", value: "high" },
-  { label: "Medium", value: "medium" },
-  { label: "Low", value: "low" },
-]
+export const dynamic = "force-dynamic"
 
-const STATUS_FILTERS: { label: string; value: CoachingStatus | "all" }[] = [
-  { label: "All", value: "all" },
-  { label: "New", value: "new" },
-  { label: "Reviewing", value: "reviewing" },
-  { label: "Coached", value: "coached" },
-  { label: "Watchlist", value: "watchlist" },
-]
+export default async function CoachingPage() {
+  let coachingInsights: CoachingInsight[] = mockCoachingInsights
 
-export default function CoachingPage() {
-  const { toggle } = useMobileSidebar()
-  const [severityFilter, setSeverityFilter] = useState<CoachingSeverity | "all">("all")
-  const [statusFilter, setStatusFilter] = useState<CoachingStatus | "all">("all")
-  const [selected, setSelected] = useState<CoachingInsight | null>(null)
-  const [insights, setInsights] = useState(mockCoachingInsights)
+  try {
+    const supabase = await createClient()
 
-  const filtered = insights.filter((i) => {
-    const matchesSeverity = severityFilter === "all" || i.severity === severityFilter
-    const matchesStatus = statusFilter === "all" || i.status === statusFilter
-    return matchesSeverity && matchesStatus
-  })
+    // Fetch coaching items
+    const { data: coachingItems, error: coachingError } = await supabase
+      .from("coaching_items")
+      .select(
+        `
+        id,
+        organization_id,
+        rep_id,
+        manager_id,
+        severity,
+        status,
+        theme,
+        reason,
+        recommended_action,
+        notes,
+        flagged_at,
+        updated_at
+      `
+      )
+      .order("severity", { ascending: false })
+      .order("flagged_at", { ascending: false })
 
-  function handleStatusChange(id: string, status: CoachingStatus) {
-    setInsights((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, status, updatedAt: new Date().toISOString() } : i))
-    )
-    if (selected?.id === id) setSelected((s) => s ? { ...s, status } : null)
+    if (coachingError) {
+      console.error("[v0] Error fetching coaching items:", coachingError)
+    }
+
+    // Fetch reps for name resolution
+    const { data: reps, error: repsError } = await supabase
+      .from("reps")
+      .select("id, name, team_id")
+
+    if (repsError) {
+      console.error("[v0] Error fetching reps:", repsError)
+    }
+
+    // Fetch teams for name resolution
+    const { data: teams, error: teamsError } = await supabase
+      .from("teams")
+      .select("id, name")
+
+    if (teamsError) {
+      console.error("[v0] Error fetching teams:", teamsError)
+    }
+
+    // Map coaching items to CoachingInsight type
+    if (coachingItems && coachingItems.length > 0 && reps && teams) {
+      const repMap = new Map(reps.map((r: any) => [r.id, r]))
+      const teamMap = new Map(teams.map((t: any) => [t.id, t]))
+
+      coachingInsights = coachingItems.map((item: any) => {
+        const rep = repMap.get(item.rep_id)
+        const team = teamMap.get(rep?.team_id)
+
+        return {
+          id: item.id,
+          tenantId: item.organization_id,
+          repId: item.rep_id,
+          repName: rep?.name || "Unknown Rep",
+          teamId: rep?.team_id,
+          teamName: team?.name || "Unknown Team",
+          managerId: item.manager_id,
+          severity: item.severity,
+          status: item.status,
+          theme: item.theme,
+          reason: item.reason,
+          recommendedAction: item.recommended_action,
+          flaggedAt: item.flagged_at,
+          updatedAt: item.updated_at,
+          metrics: {},
+          notes: item.notes || [],
+        }
+      })
+    }
+  } catch (error) {
+    console.error("[v0] Error fetching coaching data:", error)
+    // Fall back to mock data on error
   }
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       <AppHeader
         title="Coaching Queue"
-        subtitle={`${insights.filter((i) => i.status !== "coached").length} open items`}
-        onMenuClick={toggle}
+        subtitle={`${coachingInsights.filter((i) => i.status !== "coached").length} open items`}
       />
-      <div className="flex flex-1 overflow-hidden">
-        <div className="flex flex-col flex-1 overflow-hidden">
-          {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-4 px-4 py-3 border-b border-border bg-card shrink-0">
-            <div className="space-y-1.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Severity
-              </p>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {SEVERITY_FILTERS.map((f) => (
-                  <button
-                    key={f.value}
-                    onClick={() => setSeverityFilter(f.value)}
-                    className={cn(
-                      "px-2.5 py-1.5 rounded text-xs font-medium transition-colors",
-                      severityFilter === f.value
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Status
-              </p>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {STATUS_FILTERS.map((f) => (
-                  <button
-                    key={f.value}
-                    onClick={() => setStatusFilter(f.value)}
-                    className={cn(
-                      "px-2.5 py-1.5 rounded text-xs font-medium transition-colors",
-                      statusFilter === f.value
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* List */}
-          <CoachingList
-            insights={filtered}
-            selected={selected}
-            onSelect={setSelected}
-            onStatusChange={handleStatusChange}
-          />
-        </div>
-
-        {/* Detail drawer */}
-        {selected && (
-          <CoachingDrawer
-            insight={selected}
-            onClose={() => setSelected(null)}
-            onStatusChange={handleStatusChange}
-          />
-        )}
-      </div>
+      <CoachingPageClient initialInsights={coachingInsights} />
     </div>
   )
 }
