@@ -5,7 +5,7 @@ const METRICS: { key: keyof PatternScore; label: string; description: string; is
   { key: "topRepSimilarity", label: "Top Rep Similarity", description: "Workflow mix & execution alignment" },
   { key: "prospectingFocusTime", label: "Prospecting Focus", description: "Uninterrupted prospecting blocks" },
   { key: "followUpDiscipline", label: "Follow-up Discipline", description: "Follow-up speed & consistency" },
-  { key: "prepQuality", label: "Prep Quality", description: "Research time before outreach" },
+  { key: "outboundVelocity", label: "Outbound Velocity", description: "Emails, calls, and sequences per day" },
   { key: "workflowDrift", label: "Workflow Drift", description: "Deviation from winning patterns", isDrift: true },
   { key: "signalConfidence", label: "Data Coverage", description: "Browser activity data quality & completeness" },
 ]

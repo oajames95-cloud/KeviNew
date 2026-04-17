@@ -7,7 +7,7 @@ const metricLabels: Record<keyof PatternScore, string> = {
   workflowDrift: "Workflow Drift",
   prospectingFocusTime: "Prospecting Focus",
   followUpDiscipline: "Follow-up Discipline",
-  prepQuality: "Pre-call Prep",
+  outboundVelocity: "Outbound Velocity",
   signalConfidence: "Data Coverage",
 }
 
