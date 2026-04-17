@@ -27,7 +27,7 @@ function getTopGaps(rep: Rep) {
   const gaps = [
     { metric: "Top Rep Similarity", gap: benchmark.topRepSimilarity - rep.scores.topRepSimilarity, current: rep.scores.topRepSimilarity },
     { metric: "Follow-up Discipline", gap: benchmark.followUpDiscipline - rep.scores.followUpDiscipline, current: rep.scores.followUpDiscipline },
-    { metric: "Pre-call Prep", gap: benchmark.prepQuality - rep.scores.prepQuality, current: rep.scores.prepQuality },
+    { metric: "Outbound Velocity", gap: benchmark.outboundVelocity - rep.scores.outboundVelocity, current: rep.scores.outboundVelocity },
     { metric: "Prospecting Focus", gap: benchmark.prospectingFocusTime - rep.scores.prospectingFocusTime, current: rep.scores.prospectingFocusTime },
   ]
   return gaps.filter(g => g.gap > 0).sort((a, b) => b.gap - a.gap).slice(0, 2)
@@ -37,7 +37,7 @@ function getWins(rep: Rep) {
   const wins = []
   if (rep.scores.topRepSimilarity >= benchmark.topRepSimilarity) wins.push("Workflow rhythm matching top performers")
   if (rep.scores.followUpDiscipline >= benchmark.followUpDiscipline) wins.push("Follow-up cadence is strong")
-  if (rep.scores.prepQuality >= benchmark.prepQuality) wins.push("Pre-call research time is solid")
+  if (rep.scores.outboundVelocity >= benchmark.outboundVelocity) wins.push("Pre-call research time is solid")
   if (rep.scores.prospectingFocusTime >= benchmark.prospectingFocusTime) wins.push("Protecting prospecting focus blocks")
   if (rep.trend === "improving") wins.push("Positive workflow momentum this week")
   return wins.slice(0, 2)
@@ -80,7 +80,7 @@ function getCommitment(rep: Rep) {
   const commitments: Record<string, string> = {
     "Top Rep Similarity": "Commit to following the daily workflow sequence — Apollo first, then LinkedIn, then sequencer — for 5 days",
     "Follow-up Discipline": "Clear all open threads before EOD each day this week. Review the list together on Friday.",
-    "Pre-call Prep": "Add a 15-min research block before each calling cluster. Use the top-cohort checklist.",
+    "Outbound Velocity": "Add a 15-min research block before each calling cluster. Use the top-cohort checklist.",
     "Prospecting Focus": "Block 9–11am as a no-meetings, no-Slack prospecting window for the next week",
   }
 
