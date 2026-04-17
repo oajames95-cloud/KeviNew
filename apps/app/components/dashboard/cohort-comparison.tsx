@@ -19,7 +19,7 @@ const REMAP: { key: keyof PatternScore; label: string }[] = [
   { key: "topRepSimilarity", label: "Rep Similarity" },
   { key: "prospectingFocusTime", label: "Prospecting" },
   { key: "followUpDiscipline", label: "Follow-up" },
-  { key: "prepQuality", label: "Prep" },
+  { key: "outboundVelocity", label: "Outbound" },
   { key: "signalConfidence", label: "Data Coverage" },
 ]
 
