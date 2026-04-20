@@ -22,6 +22,12 @@ export default async function DashboardPage() {
       .select("id, organization_id, rep_id, team_id, title, reason, coaching_theme, severity, status, suggested_action, opened_at, updated_at")
       .order("opened_at", { ascending: false })
 
+    const { data: dailyMetricsData } = await supabase
+      .from("rep_daily_metrics")
+      .select("rep_id, date, meetings_booked, time_prospecting, calls_dialed, connect_rate, follow_up_rate")
+      .order("date", { ascending: false })
+      .limit(500)
+
     if (repsError || teamsError || coachingError || !repsData?.length) {
       return <DashboardClient reps={mockReps} teamSummary={mockTeamSummary} coachingInsights={mockCoachingInsights} />
     }
@@ -44,7 +50,29 @@ export default async function DashboardPage() {
         outboundVelocity: r.outbound_velocity ?? 0,
         signalConfidence: r.signal_confidence ?? 0,
       },
-      recentActivity: [],
+      recentActivity: (dailyMetricsData || [])
+        .filter((m: any) => m.rep_id === r.id)
+        .map((m: any) => ({
+          date: m.date,
+          meetingsBooked: m.meetings_booked || 0,
+          timeProspecting: m.time_prospecting || 0,
+          callsDialed: m.calls_dialed || 0,
+          connectRate: m.connect_rate || 0,
+          followUpRate: m.follow_up_rate || 0,
+          timeResearching: 0,
+          timeBuildingLists: 0,
+          timeInApollo: 0,
+          timeInLinkedIn: 0,
+          timeInCRM: 0,
+          timeInSequencer: 0,
+          timeInEmail: 0,
+          timeInCalendar: 0,
+          idleTime: 0,
+          contextSwitches: 0,
+          focusBlocksMin: 0,
+          workdayMinutes: 0,
+          emailsSent: 0,
+        })),
       dataSourceIds: [],
     }))
 
