@@ -94,7 +94,7 @@ export function CoachingList({ insights, selected, onSelect, onStatusChange }: C
                     workflowDrift: "Drift",
                     prospectingFocusTime: "Prospecting",
                     followUpDiscipline: "Follow-up",
-                    prepQuality: "Prep",
+                    outboundVelocity: "Outbound",
                     signalConfidence: "Coverage",
                   }
                   return (

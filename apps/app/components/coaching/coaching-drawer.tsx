@@ -107,7 +107,7 @@ export function CoachingDrawer({ insight, onClose, onStatusChange }: CoachingDra
                   workflowDrift: "Workflow Drift",
                   prospectingFocusTime: "Prospecting Focus",
                   followUpDiscipline: "Follow-up",
-                  prepQuality: "Pre-call Prep",
+                  outboundVelocity: "Outbound Velocity",
                   signalConfidence: "Data Coverage",
                 }
                 return (

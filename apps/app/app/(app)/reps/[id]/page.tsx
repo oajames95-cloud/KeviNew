@@ -70,7 +70,7 @@ export default function RepDetailPage() {
               workflowDrift: 0,
               followUpDiscipline: repData.score_follow_up_discipline || 0,
               prospectingFocusTime: repData.score_prospecting_focus_time || 0,
-              prepQuality: repData.score_prep_quality || 0,
+              outboundVelocity: repData.outbound_velocity || 0,
               signalConfidence: 0,
             },
             recentActivity: (repData.rep_daily_metrics || []).map((metric: any) => ({
