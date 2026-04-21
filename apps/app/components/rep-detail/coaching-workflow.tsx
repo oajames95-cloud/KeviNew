@@ -149,10 +149,10 @@ export function CoachingWorkflow({
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="right" className="w-full max-w-2xl overflow-y-auto">
-        <SheetHeader className="space-y-4 border-b pb-4">
-          <div className="flex items-center justify-between">
-            <div>
+      <SheetContent side="right" className="w-full max-w-4xl overflow-y-auto">
+        <SheetHeader className="space-y-4 border-b pb-4 pr-2">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1">
               <h2 className="text-2xl font-semibold text-foreground">{rep.name}</h2>
               <p className="text-sm text-muted-foreground">
                 {rep.role} • Coaching Session • {new Date(plan.sessionDate).toLocaleDateString()}
@@ -160,7 +160,7 @@ export function CoachingWorkflow({
             </div>
             <button
               onClick={onClose}
-              className="text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground flex-shrink-0"
             >
               <X className="h-5 w-5" />
             </button>
@@ -181,14 +181,14 @@ export function CoachingWorkflow({
           </div>
         </SheetHeader>
 
-        <div className="space-y-6 py-6">
+        <div className="space-y-6 py-6 px-2">
           {/* STAGE 1: UNDERSTAND */}
           {stage === "understand" && (
-            <div className="space-y-4">
+            <div className="space-y-4 max-w-3xl">
               <div>
                 <h3 className="text-lg font-semibold text-foreground mb-3">Why This Session Matters</h3>
                 {sessionContext?.whyItMatters ? (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-gray-700">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-gray-700 leading-relaxed">
                     {sessionContext.whyItMatters}
                   </div>
                 ) : (
@@ -202,8 +202,8 @@ export function CoachingWorkflow({
               {/* Current metrics snapshot */}
               {sessionContext?.currentMetrics && (
                 <div>
-                  <h4 className="font-medium text-foreground mb-2">Current Performance Snapshot</h4>
-                  <div className="grid grid-cols-2 gap-3">
+                  <h4 className="font-medium text-foreground mb-3">Current Performance Snapshot</h4>
+                  <div className="grid grid-cols-3 gap-3">
                     {Object.entries(sessionContext.currentMetrics).map(([key, value]) => (
                       <div key={key} className="bg-muted p-3 rounded-lg">
                         <p className="text-xs text-muted-foreground capitalize">{key.replace(/_/g, " ")}</p>
@@ -217,11 +217,11 @@ export function CoachingWorkflow({
               {/* Pattern diagnosis */}
               {sessionContext?.targetPatterns && (
                 <div>
-                  <h4 className="font-medium text-foreground mb-2">Pattern Diagnosis</h4>
+                  <h4 className="font-medium text-foreground mb-3">Pattern Diagnosis</h4>
                   <ul className="space-y-2">
                     {sessionContext.targetPatterns.map((pattern, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
-                        <span className="text-blue-600 font-bold mt-0.5">•</span>
+                        <span className="text-blue-600 font-bold mt-0.5 flex-shrink-0">•</span>
                         <span>{pattern}</span>
                       </li>
                     ))}
@@ -552,23 +552,25 @@ export function CoachingWorkflow({
         </div>
 
         {/* Navigation buttons */}
-        <div className="border-t pt-4 flex gap-3 sticky bottom-0 bg-background">
+        <div className="border-t pt-4 flex gap-3 sticky bottom-0 bg-background px-2">
           <Button
             variant="outline"
             onClick={handlePrev}
             disabled={stage === "understand"}
-            className="flex-1"
+            size="sm"
           >
             Back
           </Button>
-          {stage !== "summary" ? (
-            <Button onClick={handleNext} className="flex-1">
-              Next <ChevronRight className="h-4 w-4 ml-1" />
+          {stage !== "summary" && (
+            <Button onClick={handleNext} size="sm" className="flex-1">
+              Next
+              <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
-          ) : (
-            <Button onClick={handleSave} className="flex-1 bg-green-600 hover:bg-green-700">
-              <Check className="h-4 w-4 mr-2" />
-              Save Plan
+          )}
+          {stage === "summary" && (
+            <Button onClick={handleSave} size="sm" className="flex-1 bg-green-600 hover:bg-green-700">
+              <Check className="h-4 w-4 mr-1" />
+              Save Coaching Plan
             </Button>
           )}
         </div>
