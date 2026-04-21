@@ -7,6 +7,7 @@ import { useMobileSidebar } from "@/components/shell/app-shell"
 import { TrendBadge } from "@/components/shared/trend-badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { ActiveCoachingPlan } from "@/components/rep-detail/active-coaching-plan"
 import { DecisionCard } from "@/components/rep-detail/decision-card"
 import { OneOnOnePrep } from "@/components/rep-detail/one-on-one-prep"
 import { RepScoreCards } from "@/components/rep-detail/rep-score-cards"
@@ -42,9 +43,10 @@ function tenureLabel(hireDate: string): string {
 
 interface RepDetailClientProps {
   rep: Rep
+  coachingTargets?: any[]
 }
 
-export function RepDetailClient({ rep }: RepDetailClientProps) {
+export function RepDetailClient({ rep, coachingTargets = [] }: RepDetailClientProps) {
   const { toggle } = useMobileSidebar()
 
   return (
@@ -66,6 +68,11 @@ export function RepDetailClient({ rep }: RepDetailClientProps) {
         <DecisionCard rep={rep} />
 
         <OneOnOnePrep rep={rep} />
+
+        {/* Active Coaching Plan - positioned prominently */}
+        {coachingTargets.length > 0 && (
+          <ActiveCoachingPlan targets={coachingTargets} repName={rep.name} />
+        )}
 
         <div>
           <h3 className="text-sm font-semibold text-foreground mb-3">Outcomes (Last 5 Days)</h3>

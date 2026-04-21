@@ -1,128 +1,172 @@
 "use client"
 
-import { AlertCircle, CheckCircle2, Clock, TrendingDown } from "lucide-react"
+import { AlertCircle, AlertTriangle, Info, CheckCircle2, MessageSquare, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import type { Rep } from "@/types"
+import { cn } from "@/lib/utils"
 
 interface CoachingItemsListProps {
   rep: Rep
+  onPrepareSession?: () => void
 }
 
 const mockCoachingItems = [
   {
     id: "1",
-    theme: "Call Connect Rate",
-    reason: "Below team average (22% vs 28%)",
-    severity: "high",
-    status: "new",
+    theme: "Follow-up Discipline",
+    reason: "Follow-up rate dropped 18% after new sequencer rollout. May be process friction or tool adoption issue.",
+    severity: "critical" as const,
+    status: "new" as const,
     flaggedAt: "2 days ago",
-    recommendedAction: "Practice active listening techniques and rapport building",
+    talkingPoints: [
+      "Walk through current follow-up workflow",
+      "Check sequencer setup and cadence",
+      "Identify friction points"
+    ],
   },
   {
     id: "2",
-    theme: "Meeting-to-Pipeline Ratio",
-    reason: "Not converting meetings to pipeline",
-    severity: "critical",
-    status: "reviewing",
-    flaggedAt: "1 week ago",
-    recommendedAction: "Review discovery questions and qualification process",
+    theme: "Prospecting Focus",
+    reason: "Context switches up to 48/day vs 22 for top performers. Focus blocks averaging 55 min vs 85+ target.",
+    severity: "high" as const,
+    status: "reviewing" as const,
+    flaggedAt: "5 days ago",
+    talkingPoints: [
+      "Review morning routine structure",
+      "Discuss calendar blocking strategy",
+      "Set up quiet hours/DND"
+    ],
   },
   {
     id: "3",
-    theme: "Email Follow-Up Discipline",
-    reason: "54% follow-up rate vs 72% team average",
-    severity: "medium",
-    status: "coached",
-    flaggedAt: "3 weeks ago",
-    recommendedAction: "Set calendar reminders for follow-up sequences",
+    theme: "Research Prep",
+    reason: "Pre-call research time at 18 min/day vs 28+ for top performers. Quick wins may help connect rate.",
+    severity: "medium" as const,
+    status: "watchlist" as const,
+    flaggedAt: "1 week ago",
+    talkingPoints: [
+      "Share top-performer pre-call checklist",
+      "Schedule co-work session with Priya"
+    ],
   },
 ]
 
-function getSeverityIcon(severity: string) {
-  switch (severity) {
-    case "critical":
-      return <AlertCircle className="w-5 h-5 text-destructive" />
-    case "high":
-      return <TrendingDown className="w-5 h-5 text-warning" />
-    case "medium":
-      return <Clock className="w-5 h-5 text-amber-500" />
-    default:
-      return <CheckCircle2 className="w-5 h-5 text-success" />
-  }
+const severityConfig = {
+  critical: {
+    icon: AlertCircle,
+    bg: "bg-red-50",
+    border: "border-red-200 hover:border-red-300",
+    iconColor: "text-red-600",
+    label: "Critical",
+  },
+  high: {
+    icon: AlertTriangle,
+    bg: "bg-amber-50",
+    border: "border-amber-200 hover:border-amber-300",
+    iconColor: "text-amber-600",
+    label: "High",
+  },
+  medium: {
+    icon: Info,
+    bg: "bg-blue-50",
+    border: "border-blue-200 hover:border-blue-300",
+    iconColor: "text-blue-600",
+    label: "Medium",
+  },
+  low: {
+    icon: CheckCircle2,
+    bg: "bg-emerald-50",
+    border: "border-emerald-200 hover:border-emerald-300",
+    iconColor: "text-emerald-600",
+    label: "Low",
+  },
 }
 
-function getSeverityBadge(severity: string) {
-  const variants: Record<string, "destructive" | "default" | "secondary" | "outline"> = {
-    critical: "destructive",
-    high: "destructive",
-    medium: "default",
-    low: "secondary",
-  }
-  return variants[severity] || "default"
+const statusConfig = {
+  new: { label: "New", className: "bg-primary/10 text-primary" },
+  reviewing: { label: "Reviewing", className: "bg-amber-100 text-amber-700" },
+  coached: { label: "Coached", className: "bg-emerald-100 text-emerald-700" },
+  watchlist: { label: "Watchlist", className: "bg-slate-100 text-slate-600" },
 }
 
-function getStatusBadge(status: string) {
-  switch (status) {
-    case "new":
-      return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">New</Badge>
-    case "reviewing":
-      return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Reviewing</Badge>
-    case "coached":
-      return <Badge variant="outline" className="bg-success/10 text-success border-success/30">Coached</Badge>
-    case "watchlist":
-      return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">Watchlist</Badge>
-    default:
-      return <Badge>{status}</Badge>
+export function CoachingItemsList({ rep, onPrepareSession }: CoachingItemsListProps) {
+  if (mockCoachingItems.length === 0) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-8 text-center">
+        <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
+        <p className="text-sm font-medium text-foreground">No active focus areas</p>
+        <p className="text-xs text-muted-foreground mt-1">Great job! All coaching items are resolved.</p>
+      </div>
+    )
   }
-}
 
-export function CoachingItemsList({ rep }: CoachingItemsListProps) {
   return (
-    <div className="space-y-3">
-      {mockCoachingItems.map((item) => (
-        <div
-          key={item.id}
-          className="rounded-lg border border-border bg-card p-4 hover:border-border-light hover:bg-card/80 transition-all cursor-pointer group"
-        >
-          <div className="flex gap-4">
-            <div className="shrink-0 mt-0.5">
-              {getSeverityIcon(item.severity)}
-            </div>
-            
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <h3 className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors">
-                  {item.theme}
-                </h3>
-                {getStatusBadge(item.status)}
+    <div className="flex flex-col gap-3">
+      {mockCoachingItems.map((item) => {
+        const severity = severityConfig[item.severity]
+        const status = statusConfig[item.status]
+        const Icon = severity.icon
+
+        return (
+          <div
+            key={item.id}
+            className={cn(
+              "rounded-xl border bg-card p-4 transition-all",
+              severity.border
+            )}
+          >
+            {/* Header */}
+            <div className="flex items-start gap-3 mb-3">
+              <div className={cn("p-2 rounded-lg shrink-0", severity.bg)}>
+                <Icon className={cn("w-4 h-4", severity.iconColor)} />
               </div>
-              
-              <p className="text-xs text-muted-foreground mb-3">{item.reason}</p>
-              
-              <div className="space-y-2">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-1">Recommended Action</p>
-                  <p className="text-xs text-foreground bg-secondary/50 p-2 rounded">
-                    {item.recommendedAction}
-                  </p>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="font-semibold text-sm text-foreground">{item.theme}</h3>
+                  <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded", status.className)}>
+                    {status.label}
+                  </span>
                 </div>
+                <p className="text-xs text-muted-foreground">{item.reason}</p>
               </div>
-              
-              <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
-                <span className="text-xs text-muted-foreground">Flagged {item.flaggedAt}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs px-2"
-                >
-                  Prepare Session
-                </Button>
+            </div>
+
+            {/* Talking Points */}
+            {item.talkingPoints && item.talkingPoints.length > 0 && (
+              <div className="mb-3 p-3 rounded-lg bg-muted/50">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <MessageSquare className="w-3 h-3 text-muted-foreground" />
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Suggested talking points
+                  </span>
+                </div>
+                <ul className="space-y-1">
+                  {item.talkingPoints.map((point, i) => (
+                    <li key={i} className="text-xs text-foreground flex items-start gap-2">
+                      <span className="text-muted-foreground">•</span>
+                      {point}
+                    </li>
+                  ))}
+                </ul>
               </div>
+            )}
+
+            {/* Footer */}
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-muted-foreground">Flagged {item.flaggedAt}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs px-2 gap-1 text-primary hover:text-primary"
+                onClick={onPrepareSession}
+              >
+                Start session
+                <ArrowRight className="w-3 h-3" />
+              </Button>
             </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

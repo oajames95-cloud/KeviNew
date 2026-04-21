@@ -161,6 +161,77 @@ export interface CoachingNote {
   createdAt: string
 }
 
+export interface CoachingSession {
+  id: string
+  tenantId: string
+  repId: string
+  repName: string
+  managerId: string
+  scheduledAt: string // ISO datetime
+  duration: number // minutes
+  status: "scheduled" | "completed" | "cancelled"
+  coachingItemId?: string // Link to related coaching insight
+  talkingPoints: TalkingPoint[]
+  actionItems: ActionItem[]
+  notes?: string
+  completedAt?: string
+}
+
+export interface TalkingPoint {
+  id: string
+  text: string
+  checked: boolean
+}
+
+export interface ActionItem {
+  id: string
+  text: string
+  dueDate?: string
+  completed: boolean
+  completedAt?: string
+}
+
+// ─────────────────────────────────────────────
+// Rep Targets (Coaching commitments)
+// ─────────────────────────────────────────────
+
+export type RepTargetMetric = 
+  | "emails_sent"
+  | "prospecting_time"
+  | "meetings_booked"
+  | "pipeline_created"
+  | "response_rate"
+  | "open_rate"
+  | "account_activity"
+  | "calls_dialed"
+
+export interface RepTarget {
+  id: string
+  tenantId: string
+  repId: string
+  createdFromSessionId?: string
+  metric: RepTargetMetric
+  targetValue: number
+  timeFrame: "daily" | "weekly" | "monthly"
+  accountScope?: string
+  notes?: string
+  createdAt: string
+  updatedAt: string
+  completedAt?: string
+  status: "active" | "completed" | "cancelled"
+}
+
+export type TargetPaceStatus = "on-track" | "watch" | "behind"
+
+export interface RepTargetProgress {
+  target: RepTarget
+  currentValue: number
+  paceStatus: TargetPaceStatus
+  progress: number
+  daysRemaining: number
+  projectedAtCompletion: number
+}
+
 // ─────────────────────────────────────────────
 // Data Sources
 // ─────────────────────────────────────────────
