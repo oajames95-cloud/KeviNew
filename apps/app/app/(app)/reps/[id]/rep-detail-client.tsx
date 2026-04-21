@@ -1,7 +1,9 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { ChevronLeft, Mail, Calendar } from "lucide-react"
+import { toast } from "sonner"
 import { AppHeader } from "@/components/shell/app-header"
 import { useMobileSidebar } from "@/components/shell/app-shell"
 import { TrendBadge } from "@/components/shared/trend-badge"
@@ -9,6 +11,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { ActiveCoachingPlan } from "@/components/rep-detail/active-coaching-plan"
 import { DecisionCard } from "@/components/rep-detail/decision-card"
+import { CoachingWorkflow } from "@/components/rep-detail/coaching-workflow"
 import { OneOnOnePrep } from "@/components/rep-detail/one-on-one-prep"
 import { RepScoreCards } from "@/components/rep-detail/rep-score-cards"
 import { WorkflowTimeline } from "@/components/rep-detail/workflow-timeline"
@@ -16,6 +19,7 @@ import { RepInsightPanels } from "@/components/rep-detail/rep-insight-panels"
 import { CoachingNotes } from "@/components/rep-detail/coaching-notes"
 import { OutcomesMetrics } from "@/components/shared/outcomes-metrics"
 import { TopPerformerBaseline } from "@/components/shared/top-performer-baseline"
+import { saveCoachingSession } from "@/lib/coaching/sessions"
 import { mockTeams, mockTeamSummary } from "@/lib/mock-data"
 import type { Rep } from "@/types"
 
@@ -48,6 +52,21 @@ interface RepDetailClientProps {
 
 export function RepDetailClient({ rep, coachingTargets = [] }: RepDetailClientProps) {
   const { toggle } = useMobileSidebar()
+  const [isWorkflowOpen, setIsWorkflowOpen] = useState(false)
+
+  const handleSaveSession = async (plan: any) => {
+    try {
+      const result = await saveCoachingSession(rep.id, rep.tenantId, plan, undefined)
+      if (result.success) {
+        toast.success(`Session saved. ${result.targetsCount || 0} target${(result.targetsCount || 0) !== 1 ? "s" : ""} set for ${rep.name}.`)
+        setIsWorkflowOpen(false)
+      } else {
+        toast.error(result.error || "Failed to save session")
+      }
+    } catch {
+      toast.error("An error occurred while saving")
+    }
+  }
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
@@ -65,7 +84,7 @@ export function RepDetailClient({ rep, coachingTargets = [] }: RepDetailClientPr
           Back to Reps
         </Link>
 
-        <DecisionCard rep={rep} />
+        <DecisionCard rep={rep} onStartSession={() => setIsWorkflowOpen(true)} />
 
         <OneOnOnePrep rep={rep} />
 
@@ -150,6 +169,13 @@ export function RepDetailClient({ rep, coachingTargets = [] }: RepDetailClientPr
 
         <CoachingNotes />
       </main>
+
+      <CoachingWorkflow
+        rep={rep}
+        isOpen={isWorkflowOpen}
+        onClose={() => setIsWorkflowOpen(false)}
+        onSave={handleSaveSession}
+      />
     </div>
   )
 }
