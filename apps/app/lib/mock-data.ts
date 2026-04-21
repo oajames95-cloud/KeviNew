@@ -496,10 +496,73 @@ export const mockCoachingSessions: CoachingSession[] = [
 ]
 
 // ─────────────────────────────────────────────
-// Data Sources
+// Rep Targets (Coaching commitments)
 // ─────────────────────────────────────────────
 
-export const mockDataSources: DataSource[] = [
+export const mockRepTargets: RepTarget[] = [
+  {
+    id: "rt_01",
+    tenantId: "t_01",
+    repId: "rep_05",
+    createdFromSessionId: "cs_01",
+    metric: "prospecting_time",
+    targetValue: 300, // 5 hours/day
+    timeFrame: "daily",
+    notes: "From Jan 10 coaching session — build morning prospecting block 9-11am",
+    createdAt: "2025-01-10T10:00:00Z",
+    updatedAt: "2025-01-10T10:00:00Z",
+    status: "active",
+  },
+  {
+    id: "rt_02",
+    tenantId: "t_01",
+    repId: "rep_05",
+    createdFromSessionId: "cs_01",
+    metric: "emails_sent",
+    targetValue: 18, // max per day (not min)
+    timeFrame: "daily",
+    notes: "Reduce email time to 3 checks/day max",
+    createdAt: "2025-01-10T10:00:00Z",
+    updatedAt: "2025-01-10T10:00:00Z",
+    status: "active",
+  },
+  {
+    id: "rt_03",
+    tenantId: "t_01",
+    repId: "rep_03",
+    metric: "follow_up_rate",
+    targetValue: 45, // percentage
+    timeFrame: "weekly",
+    notes: "Get back to 50+ follow-up rate after sequencer ramp",
+    createdAt: "2025-01-08T14:00:00Z",
+    updatedAt: "2025-01-10T09:00:00Z",
+    status: "active",
+  },
+  {
+    id: "rt_04",
+    tenantId: "t_01",
+    repId: "rep_02",
+    metric: "prospecting_time",
+    targetValue: 360, // 6 hours/day target for stronger research
+    timeFrame: "daily",
+    notes: "Increase research/prep time from 18 to 28 min/day",
+    createdAt: "2025-01-10T08:00:00Z",
+    updatedAt: "2025-01-10T08:00:00Z",
+    status: "active",
+  },
+  {
+    id: "rt_05",
+    tenantId: "t_01",
+    repId: "rep_06",
+    metric: "meetings_booked",
+    targetValue: 6, // per week
+    timeFrame: "weekly",
+    notes: "Maintain momentum from recent coaching",
+    createdAt: "2025-01-08T16:00:00Z",
+    updatedAt: "2025-01-09T10:00:00Z",
+    status: "active",
+  },
+]
   {
     id: "ds_01",
     tenantId: "t_01",

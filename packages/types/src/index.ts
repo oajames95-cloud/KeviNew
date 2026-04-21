@@ -192,6 +192,47 @@ export interface ActionItem {
 }
 
 // ─────────────────────────────────────────────
+// Rep Targets (Coaching commitments)
+// ─────────────────────────────────────────────
+
+export type RepTargetMetric = 
+  | "emails_sent"
+  | "prospecting_time"
+  | "meetings_booked"
+  | "pipeline_created"
+  | "response_rate"
+  | "open_rate"
+  | "account_activity"
+  | "calls_dialed"
+
+export interface RepTarget {
+  id: string
+  tenantId: string
+  repId: string
+  createdFromSessionId?: string
+  metric: RepTargetMetric
+  targetValue: number
+  timeFrame: "daily" | "weekly" | "monthly"
+  accountScope?: string
+  notes?: string
+  createdAt: string
+  updatedAt: string
+  completedAt?: string
+  status: "active" | "completed" | "cancelled"
+}
+
+export type TargetPaceStatus = "on-track" | "watch" | "behind"
+
+export interface RepTargetProgress {
+  target: RepTarget
+  currentValue: number
+  paceStatus: TargetPaceStatus
+  progress: number
+  daysRemaining: number
+  projectedAtCompletion: number
+}
+
+// ─────────────────────────────────────────────
 // Data Sources
 // ─────────────────────────────────────────────
 

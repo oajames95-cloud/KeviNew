@@ -9,11 +9,17 @@ import { Button } from "@/components/ui/button"
 import { CoachingItemsList } from "./coaching-items-list"
 import { RecentSessionsList } from "./recent-sessions-list"
 import { CoachingSessionPanel } from "./coaching-session-panel"
-import type { Rep, RepTrend } from "@/types"
+import { HourlyHeatmap } from "./hourly-heatmap"
+import { QualityMetrics } from "./quality-metrics"
+import { CRMAccountActivity } from "./crm-account-activity"
+import { TargetPacing } from "@/components/shared/target-pacing"
+import { TimeFilter, type TimeRange } from "@/components/shared/time-filter"
+import type { Rep, RepTrend, RepTarget } from "@/types"
 import { cn } from "@/lib/utils"
 
 interface CoachingHubProps {
   rep: Rep
+  targets?: RepTarget[]
 }
 
 function initials(name: string) {
@@ -36,16 +42,16 @@ function TrendBadge({ trend }: { trend: RepTrend }) {
   )
 }
 
-// Fake week-over-week deltas for demo
 function getWeekDelta(current: number): { value: number; isPositive: boolean } {
   const delta = Math.floor(Math.random() * 15) - 5
   return { value: Math.abs(delta), isPositive: delta >= 0 }
 }
 
-export function CoachingHub({ rep }: CoachingHubProps) {
+export function CoachingHub({ rep, targets = [] }: CoachingHubProps) {
   const { toggle } = useMobileSidebar()
   const [isPanelOpen, setIsPanelOpen] = useState(false)
   const [selectedSession, setSelectedSession] = useState<any>(null)
+  const [timeRange, setTimeRange] = useState<TimeRange>("week")
 
   const handleNewSession = () => {
     setSelectedSession(null)
@@ -57,7 +63,6 @@ export function CoachingHub({ rep }: CoachingHubProps) {
     setIsPanelOpen(true)
   }
 
-  // Week-over-week metrics
   const metrics = [
     { label: "Similarity", value: rep.scores.topRepSimilarity, delta: getWeekDelta(rep.scores.topRepSimilarity), suffix: "%" },
     { label: "Focus Time", value: rep.scores.prospectingFocusTime, delta: getWeekDelta(rep.scores.prospectingFocusTime), suffix: "%" },
@@ -128,6 +133,12 @@ export function CoachingHub({ rep }: CoachingHubProps) {
             </div>
           </div>
 
+          {/* Time Filter */}
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-foreground">Activity & Metrics</h2>
+            <TimeFilter value={timeRange} onChange={setTimeRange} />
+          </div>
+
           {/* Week-over-Week Metrics */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {metrics.map((metric) => (
@@ -154,6 +165,33 @@ export function CoachingHub({ rep }: CoachingHubProps) {
             ))}
           </div>
 
+          {/* Hourly Heatmap */}
+          <div className="rounded-xl border border-border bg-card p-6">
+            <HourlyHeatmap activities={rep.recentActivity} />
+          </div>
+
+          {/* Quality Metrics & Target Pacing */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Quality Metrics */}
+            <div className="rounded-xl border border-border bg-card p-6">
+              <QualityMetrics 
+                responseRate={42 + Math.random() * 20}
+                openRate={58 + Math.random() * 25}
+                weeklyTrend={{
+                  responseRate: Math.random() * 10 - 3,
+                  openRate: Math.random() * 12 - 4,
+                }}
+              />
+            </div>
+
+            {/* Target Pacing */}
+            {targets.length > 0 && (
+              <div className="rounded-xl border border-border bg-card p-6">
+                <TargetPacing targets={targets} />
+              </div>
+            )}
+          </div>
+
           {/* Main Grid: Coaching Items + Recent Sessions */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left: Coaching Items */}
@@ -171,6 +209,11 @@ export function CoachingHub({ rep }: CoachingHubProps) {
               </div>
               <RecentSessionsList onEditSession={handleEditSession} />
             </div>
+          </div>
+
+          {/* CRM Account Activity */}
+          <div className="rounded-xl border border-border bg-card p-6">
+            <CRMAccountActivity repName={rep.name} />
           </div>
 
           {/* Collapsible Score Breakdown */}

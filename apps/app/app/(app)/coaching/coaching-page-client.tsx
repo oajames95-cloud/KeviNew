@@ -2,256 +2,283 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { 
-  Menu, 
-  AlertCircle, 
-  AlertTriangle, 
-  Info, 
-  CheckCircle2, 
-  ArrowRight,
-  MessageSquare
-} from "lucide-react"
+import { Plus, Clock, AlertCircle, ChevronRight, Calendar, BookOpen } from "lucide-react"
+import type { CoachingSession, CoachingInsight } from "@/types"
 import { Button } from "@/components/ui/button"
-import { useMobileSidebar } from "@/components/shell/app-shell"
-import type { CoachingInsight, CoachingSeverity, CoachingStatus } from "@/types"
 import { cn } from "@/lib/utils"
 
-const SEVERITY_FILTERS: { label: string; value: CoachingSeverity | "all" }[] = [
-  { label: "All", value: "all" },
-  { label: "Critical", value: "critical" },
-  { label: "High", value: "high" },
-  { label: "Medium", value: "medium" },
-]
-
-const STATUS_FILTERS: { label: string; value: CoachingStatus | "all" }[] = [
-  { label: "Open", value: "all" },
-  { label: "New", value: "new" },
-  { label: "Reviewing", value: "reviewing" },
-  { label: "Coached", value: "coached" },
-]
-
-const severityConfig = {
-  critical: {
-    icon: AlertCircle,
-    bg: "bg-red-50",
-    border: "border-red-200",
-    iconColor: "text-red-600",
-    label: "Critical",
-    labelBg: "bg-red-100 text-red-700",
-  },
-  high: {
-    icon: AlertTriangle,
-    bg: "bg-amber-50",
-    border: "border-amber-200",
-    iconColor: "text-amber-600",
-    label: "High",
-    labelBg: "bg-amber-100 text-amber-700",
-  },
-  medium: {
-    icon: Info,
-    bg: "bg-blue-50",
-    border: "border-blue-200",
-    iconColor: "text-blue-600",
-    label: "Medium",
-    labelBg: "bg-blue-100 text-blue-700",
-  },
-  low: {
-    icon: CheckCircle2,
-    bg: "bg-emerald-50",
-    border: "border-emerald-200",
-    iconColor: "text-emerald-600",
-    label: "Low",
-    labelBg: "bg-emerald-100 text-emerald-700",
-  },
-}
-
-const statusConfig = {
-  new: { label: "New", className: "bg-primary/10 text-primary" },
-  reviewing: { label: "Reviewing", className: "bg-amber-100 text-amber-700" },
-  coached: { label: "Coached", className: "bg-emerald-100 text-emerald-700" },
-  watchlist: { label: "Watchlist", className: "bg-slate-100 text-slate-600" },
-}
-
-function formatTheme(theme: string): string {
-  return theme
-    .split(" ")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ")
-}
-
 interface CoachingPageClientProps {
-  initialInsights: CoachingInsight[]
+  sessions: CoachingSession[]
+  insights: CoachingInsight[]
 }
 
-export function CoachingPageClient({ initialInsights }: CoachingPageClientProps) {
-  const { toggle } = useMobileSidebar()
-  const [severityFilter, setSeverityFilter] = useState<CoachingSeverity | "all">("all")
-  const [statusFilter, setStatusFilter] = useState<CoachingStatus | "all">("all")
+type SessionStatus = "needs-scheduling" | "scheduled" | "due-today" | "overdue" | "completed-recently"
 
-  const filtered = initialInsights.filter((i) => {
-    const matchesSeverity = severityFilter === "all" || i.severity === severityFilter
-    const matchesStatus = statusFilter === "all" 
-      ? i.status !== "coached" 
-      : i.status === statusFilter
-    return matchesSeverity && matchesStatus
-  })
+export function CoachingPageClient({ sessions, insights }: CoachingPageClientProps) {
+  const [showBooking, setShowBooking] = useState(false)
+  const now = new Date()
+  
+  const getSessionStatus = (session: CoachingSession): SessionStatus => {
+    const scheduledDate = new Date(session.scheduledAt)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const sessionDate = new Date(scheduledDate)
+    sessionDate.setHours(0, 0, 0, 0)
+    
+    if (session.status === "completed") {
+      const daysAgo = Math.floor((now.getTime() - scheduledDate.getTime()) / (1000 * 60 * 60 * 24))
+      if (daysAgo <= 7) return "completed-recently"
+    }
+    
+    if (scheduledDate < now && session.status === "scheduled") return "overdue"
+    if (sessionDate.getTime() === today.getTime()) return "due-today"
+    if (session.status === "scheduled") return "scheduled"
+    return "needs-scheduling"
+  }
 
-  // Sort by severity then by date
-  const sorted = [...filtered].sort((a, b) => {
-    const order = { critical: 0, high: 1, medium: 2, low: 3 }
-    const severityDiff = order[a.severity] - order[b.severity]
-    if (severityDiff !== 0) return severityDiff
-    return new Date(b.flaggedAt).getTime() - new Date(a.flaggedAt).getTime()
-  })
+  const groupedSessions = {
+    dueToday: sessions.filter(s => getSessionStatus(s) === "due-today"),
+    upcoming: sessions.filter(s => getSessionStatus(s) === "scheduled" && new Date(s.scheduledAt) > now),
+    overdue: sessions.filter(s => getSessionStatus(s) === "overdue"),
+    needsScheduling: sessions.filter(s => getSessionStatus(s) === "needs-scheduling"),
+    completed: sessions.filter(s => getSessionStatus(s) === "completed-recently"),
+  }
 
-  const openCount = initialInsights.filter((i) => i.status !== "coached").length
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case "critical": return "bg-red-50 border-red-200"
+      case "high": return "bg-orange-50 border-orange-200"
+      case "medium": return "bg-amber-50 border-amber-200"
+      default: return "bg-blue-50 border-blue-200"
+    }
+  }
+
+  const getSeverityBadge = (severity: string) => {
+    switch (severity) {
+      case "critical": return "bg-red-100 text-red-700"
+      case "high": return "bg-orange-100 text-orange-700"
+      case "medium": return "bg-amber-100 text-amber-700"
+      default: return "bg-blue-100 text-blue-700"
+    }
+  }
 
   return (
-    <div className="flex flex-col flex-1 overflow-hidden">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border">
-        <div className="flex items-center gap-4 px-6 h-14">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden -ml-2"
-            onClick={toggle}
-          >
-            <Menu className="h-5 w-5" />
-            <span className="sr-only">Toggle menu</span>
-          </Button>
-          <div>
-            <h1 className="text-lg font-semibold text-foreground">Coaching</h1>
-            <p className="text-xs text-muted-foreground">{openCount} open items</p>
+      <div className="border-b">
+        <div className="max-w-6xl mx-auto px-6 py-8">
+          <div className="flex items-center justify-between mb-2">
+            <h1 className="text-3xl font-bold text-foreground">Coaching Hub</h1>
+            <Button onClick={() => setShowBooking(!showBooking)} className="gap-2">
+              <Plus className="w-4 h-4" />
+              Book Session
+            </Button>
           </div>
+          <p className="text-muted-foreground">
+            Manage coaching sessions and track rep development across your team.
+          </p>
         </div>
-      </header>
+      </div>
 
-      <main className="flex-1 overflow-y-auto p-6">
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="flex items-center gap-2">
-            {SEVERITY_FILTERS.map((f) => (
-              <button
-                key={f.value}
-                onClick={() => setSeverityFilter(f.value)}
-                className={cn(
-                  "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
-                  severityFilter === f.value
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80"
-                )}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-          <div className="sm:ml-auto flex items-center gap-2">
-            {STATUS_FILTERS.map((f) => (
-              <button
-                key={f.value}
-                onClick={() => setStatusFilter(f.value)}
-                className={cn(
-                  "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
-                  statusFilter === f.value
-                    ? "bg-secondary text-secondary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Card feed */}
-        <div className="flex flex-col gap-4 max-w-2xl">
-          {sorted.map((item) => {
-            const config = severityConfig[item.severity]
-            const Icon = config.icon
-            const status = statusConfig[item.status]
-
-            return (
-              <Link
-                key={item.id}
-                href={`/reps/${item.repId}`}
-                className={cn(
-                  "group flex flex-col p-5 rounded-xl border bg-card transition-all hover:shadow-md",
-                  config.border
-                )}
-              >
-                {/* Header */}
-                <div className="flex items-start gap-3 mb-3">
-                  <div className={cn("p-2 rounded-lg shrink-0", config.bg)}>
-                    <Icon className={cn("w-5 h-5", config.iconColor)} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-foreground">{item.repName}</span>
-                      <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded", config.labelBg)}>
-                        {config.label}
-                      </span>
-                      <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded", status.className)}>
-                        {status.label}
-                      </span>
-                    </div>
-                    <p className="text-sm font-medium text-foreground">
-                      {formatTheme(item.theme)}
-                    </p>
-                  </div>
+      {/* Main Content */}
+      <div className="max-w-6xl mx-auto px-6 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left: Sessions */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Due Today */}
+            {groupedSessions.dueToday.length > 0 && (
+              <section>
+                <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-primary" />
+                  Due Today ({groupedSessions.dueToday.length})
+                </h2>
+                <div className="space-y-3">
+                  {groupedSessions.dueToday.map((session) => (
+                    <SessionCard key={session.id} session={session} />
+                  ))}
                 </div>
+              </section>
+            )}
 
-                {/* Context */}
-                <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                  {item.reason}
+            {/* Overdue */}
+            {groupedSessions.overdue.length > 0 && (
+              <section>
+                <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5 text-red-600" />
+                  Overdue ({groupedSessions.overdue.length})
+                </h2>
+                <div className="space-y-3">
+                  {groupedSessions.overdue.map((session) => (
+                    <SessionCard key={session.id} session={session} overdue />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Upcoming */}
+            {groupedSessions.upcoming.length > 0 && (
+              <section>
+                <h2 className="text-lg font-semibold text-foreground mb-4">Upcoming Sessions ({groupedSessions.upcoming.length})</h2>
+                <div className="space-y-3">
+                  {groupedSessions.upcoming.map((session) => (
+                    <SessionCard key={session.id} session={session} />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Needs Scheduling */}
+            {groupedSessions.needsScheduling.length > 0 && (
+              <section>
+                <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5 text-amber-600" />
+                  Needs Scheduling ({groupedSessions.needsScheduling.length})
+                </h2>
+                <div className="space-y-3">
+                  {groupedSessions.needsScheduling.map((session) => (
+                    <div
+                      key={session.id}
+                      className="bg-amber-50 border border-amber-200 rounded-lg p-4"
+                    >
+                      <p className="text-sm font-medium text-amber-900">{session.repName}</p>
+                      <p className="text-sm text-amber-800 mt-1">Coaching session pending schedule</p>
+                      <Button variant="outline" size="sm" className="mt-3">Schedule Now</Button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Completed Recently */}
+            {groupedSessions.completed.length > 0 && (
+              <section>
+                <h2 className="text-lg font-semibold text-foreground mb-4">Completed Recently ({groupedSessions.completed.length})</h2>
+                <div className="space-y-3">
+                  {groupedSessions.completed.map((session) => (
+                    <div key={session.id} className="bg-card border rounded-lg p-4 opacity-60">
+                      <p className="text-sm font-medium text-foreground">{session.repName}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Completed {new Date(session.completedAt || session.scheduledAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {sessions.length === 0 && (
+              <div className="text-center py-12">
+                <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                <p className="text-foreground font-medium mb-2">No coaching sessions yet</p>
+                <p className="text-muted-foreground text-sm mb-4">
+                  Book your first coaching session to get started.
                 </p>
-
-                {/* Suggested talking points */}
-                {item.recommendedAction && (
-                  <div className="mb-4 p-3 rounded-lg bg-muted/50">
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Suggested talking point
-                      </span>
-                    </div>
-                    <p className="text-sm text-foreground line-clamp-2">
-                      {item.recommendedAction}
-                    </p>
-                  </div>
-                )}
-
-                {/* Action */}
-                <div className="flex items-center gap-2 text-sm text-primary font-medium">
-                  Open coaching hub
-                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-                </div>
-              </Link>
-            )
-          })}
-        </div>
-
-        {/* Empty state */}
-        {sorted.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-center max-w-md mx-auto">
-            <CheckCircle2 className="w-12 h-12 text-emerald-500 mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">All caught up!</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              {statusFilter === "coached" 
-                ? "No coached items yet. Complete a coaching session to see history here."
-                : "No coaching items match your current filters."}
-            </p>
-            {statusFilter !== "all" && (
-              <Button 
-                variant="outline" 
-                onClick={() => { setSeverityFilter("all"); setStatusFilter("all") }}
-              >
-                Clear filters
-              </Button>
+                <Button onClick={() => setShowBooking(true)}>Book Session</Button>
+              </div>
             )}
           </div>
-        )}
-      </main>
+
+          {/* Right: Coaching Priorities */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-foreground">Coaching Priorities</h2>
+            <div className="space-y-3 max-h-[600px] overflow-y-auto">
+              {insights.slice(0, 8).map((insight) => (
+                <Link
+                  key={insight.id}
+                  href={`/reps/${insight.repId}`}
+                  className={cn(
+                    "block p-4 rounded-lg border transition-all hover:shadow-md",
+                    getSeverityColor(insight.severity)
+                  )}
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <p className="font-medium text-sm text-foreground">{insight.repName}</p>
+                    <span className={cn(
+                      "text-xs font-medium px-2 py-1 rounded whitespace-nowrap",
+                      getSeverityBadge(insight.severity)
+                    )}>
+                      {insight.severity}
+                    </span>
+                  </div>
+                  <p className="text-xs text-foreground/75 leading-relaxed line-clamp-2 mb-3">
+                    {insight.reason}
+                  </p>
+                  <div className="flex items-center text-primary text-xs font-medium">
+                    View rep
+                    <ChevronRight className="w-3 h-3 ml-1" />
+                  </div>
+                </Link>
+              ))}
+              {insights.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No coaching priorities at this time.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
+
+function SessionCard({ session, overdue = false }: { session: CoachingSession; overdue?: boolean }) {
+  const sessionTime = new Date(session.scheduledAt).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  })
+
+  const uncheckedPoints = session.talkingPoints.filter(tp => !tp.checked).length
+  const pendingActions = session.actionItems.filter(ai => !ai.completed).length
+
+  return (
+    <Link
+      href={`/reps/${session.repId}`}
+      className={cn(
+        "group block rounded-lg p-4 transition-all hover:shadow-md",
+        overdue 
+          ? "bg-red-50 border border-red-200 hover:border-red-300"
+          : "bg-card border hover:border-primary/20"
+      )}
+    >
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <p className={cn("font-semibold", overdue && "text-red-900")}>{session.repName}</p>
+          <p className={cn("text-sm", overdue ? "text-red-700" : "text-muted-foreground")}>{sessionTime}</p>
+        </div>
+        <span className={cn(
+          "text-xs font-medium px-2 py-1 rounded",
+          overdue ? "bg-red-100 text-red-700" : "bg-primary/10 text-primary"
+        )}>
+          {session.duration} min
+        </span>
+      </div>
+      
+      {session.talkingPoints.length > 0 && (
+        <p className={cn("text-sm mb-3 line-clamp-1", overdue ? "text-red-800" : "text-muted-foreground")}>
+          {session.talkingPoints[0].text}
+        </p>
+      )}
+
+      {(uncheckedPoints > 0 || pendingActions > 0) && (
+        <div className={cn("flex items-center gap-4 text-xs mb-3", overdue ? "text-red-600" : "text-muted-foreground")}>
+          {uncheckedPoints > 0 && (
+            <span>{uncheckedPoints}/{session.talkingPoints.length} talking points</span>
+          )}
+          {pendingActions > 0 && (
+            <span>{pendingActions} action items</span>
+          )}
+        </div>
+      )}
+
+      <div className={cn("flex items-center text-xs font-medium", overdue ? "text-red-600" : "text-primary")}>
+        Open session
+        <ChevronRight className="w-3 h-3 ml-1 transition-transform group-hover:translate-x-1" />
+      </div>
+    </Link>
+  )
+}
+
