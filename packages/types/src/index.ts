@@ -161,6 +161,36 @@ export interface CoachingNote {
   createdAt: string
 }
 
+export interface CoachingSession {
+  id: string
+  tenantId: string
+  repId: string
+  repName: string
+  managerId: string
+  scheduledAt: string // ISO datetime
+  duration: number // minutes
+  status: "scheduled" | "completed" | "cancelled"
+  coachingItemId?: string // Link to related coaching insight
+  talkingPoints: TalkingPoint[]
+  actionItems: ActionItem[]
+  notes?: string
+  completedAt?: string
+}
+
+export interface TalkingPoint {
+  id: string
+  text: string
+  checked: boolean
+}
+
+export interface ActionItem {
+  id: string
+  text: string
+  dueDate?: string
+  completed: boolean
+  completedAt?: string
+}
+
 // ─────────────────────────────────────────────
 // Data Sources
 // ─────────────────────────────────────────────

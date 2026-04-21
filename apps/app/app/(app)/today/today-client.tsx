@@ -2,12 +2,15 @@
 
 import Link from "next/link"
 import { ArrowRight, AlertCircle, AlertTriangle, Info, CheckCircle2, Menu } from "lucide-react"
-import type { CoachingInsight, RepTrend, Rep } from "@/types"
+import type { CoachingInsight, CoachingSession, RepTrend, Rep } from "@/types"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useMobileSidebar } from "@/components/shell/app-shell"
 import { SignalAlerts } from "@/components/today/signal-alerts"
+import { ScheduledSessions } from "@/components/today/scheduled-sessions"
+import { ScheduleSessionDialog } from "@/components/today/schedule-session-dialog"
 import { generateSignals } from "@/lib/signal-generator"
+import { mockCoachingInsights } from "@/lib/mock-data"
 
 interface TodayItem extends Omit<CoachingInsight, "repName"> {
   repName: string
@@ -23,6 +26,7 @@ interface TodayItem extends Omit<CoachingInsight, "repName"> {
 interface TodayClientProps {
   items: TodayItem[]
   reps: Rep[]
+  sessions: CoachingSession[]
 }
 
 const severityConfig = {
@@ -60,13 +64,13 @@ const severityConfig = {
   },
 }
 
-export function TodayClient({ items, reps }: TodayClientProps) {
+export function TodayClient({ items, reps, sessions }: TodayClientProps) {
   const { toggle } = useMobileSidebar()
   
   // Generate signals from rep data
   const signals = generateSignals(reps)
   
-  // Sort by severity
+  // Sort coaching items by severity
   const sortedItems = [...items].sort((a, b) => {
     const order = { critical: 0, high: 1, medium: 2, low: 3 }
     return order[a.severity] - order[b.severity]
@@ -78,37 +82,65 @@ export function TodayClient({ items, reps }: TodayClientProps) {
     day: "numeric",
   })
 
+  const handleScheduleSession = (sessionData: {
+    repId: string
+    date: string
+    time: string
+    duration: number
+    coachingItemId?: string
+    notes?: string
+  }) => {
+    // In a real app, this would call an API to save the session
+    console.log("[v0] Scheduling session:", sessionData)
+    // For now, just show what would be scheduled
+    alert(`Session scheduled with ${reps.find(r => r.id === sessionData.repId)?.name} on ${sessionData.date} at ${sessionData.time}`)
+  }
+
   return (
     <div className="flex-1 overflow-auto">
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border">
-        <div className="flex items-center gap-4 px-6 h-14">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden -ml-2"
-            onClick={toggle}
-          >
-            <Menu className="h-5 w-5" />
-            <span className="sr-only">Toggle menu</span>
-          </Button>
-          <div>
-            <h1 className="text-lg font-semibold text-foreground">Today</h1>
-            <p className="text-xs text-muted-foreground">{today}</p>
+        <div className="flex items-center justify-between gap-4 px-6 h-14">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden -ml-2"
+              onClick={toggle}
+            >
+              <Menu className="h-5 w-5" />
+              <span className="sr-only">Toggle menu</span>
+            </Button>
+            <div>
+              <h1 className="text-lg font-semibold text-foreground">Today</h1>
+              <p className="text-xs text-muted-foreground">{today}</p>
+            </div>
           </div>
+
+          {/* Schedule Session Button */}
+          <ScheduleSessionDialog 
+            reps={reps} 
+            coachingItems={mockCoachingInsights}
+            onSchedule={handleScheduleSession}
+          />
         </div>
       </header>
 
       {/* Content */}
       <main className="p-6 max-w-3xl">
+        {/* Scheduled Sessions Section */}
+        <ScheduledSessions sessions={sessions} />
+
         {/* Signals section */}
         <SignalAlerts signals={signals} />
 
-        <div className="mb-6">
+        {/* Coaching Queue Section Header */}
+        <div className="mb-4">
+          <h2 className="text-sm font-semibold text-foreground mb-1">Coaching Queue</h2>
           <p className="text-sm text-muted-foreground">
             {sortedItems.length === 0 
-              ? "No coaching conversations scheduled for today. Great job staying on top of things!"
-              : `You have ${sortedItems.length} coaching conversation${sortedItems.length === 1 ? "" : "s"} to prepare for today.`
+              ? "No coaching items need attention right now."
+              : `${sortedItems.length} rep${sortedItems.length === 1 ? "" : "s"} need${sortedItems.length === 1 ? "s" : ""} coaching attention.`
             }
           </p>
         </div>
@@ -162,12 +194,12 @@ export function TodayClient({ items, reps }: TodayClientProps) {
         </div>
 
         {/* Empty state */}
-        {sortedItems.length === 0 && (
+        {sortedItems.length === 0 && sessions.length === 0 && signals.length === 0 && (
           <div className="text-center py-12">
             <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-foreground mb-2">All caught up!</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              No urgent coaching items need your attention right now.
+              No urgent coaching items or sessions scheduled for today.
             </p>
             <Button asChild variant="outline">
               <Link href="/reps">View all reps</Link>

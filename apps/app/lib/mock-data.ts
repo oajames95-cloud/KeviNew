@@ -2,6 +2,7 @@ import type {
   Team,
   Rep,
   CoachingInsight,
+  CoachingSession,
   DataSource,
   TrustSetting,
   TeamSummary,
@@ -419,6 +420,78 @@ export const mockCoachingInsights: CoachingInsight[] = [
         createdAt: "2025-01-08T16:00:00Z",
       },
     ],
+  },
+]
+
+// ─────────────────────────────────────────────
+// Coaching Sessions (Scheduled 1:1s)
+// ─────────────────────────────────────────────
+
+const today = new Date()
+const todayStr = today.toISOString().split('T')[0]
+const tomorrow = new Date(today)
+tomorrow.setDate(tomorrow.getDate() + 1)
+const tomorrowStr = tomorrow.toISOString().split('T')[0]
+
+export const mockCoachingSessions: CoachingSession[] = [
+  {
+    id: "cs_01",
+    tenantId: "t_01",
+    repId: "rep_05",
+    repName: "Sam Nguyen",
+    managerId: "m_01",
+    scheduledAt: `${todayStr}T10:00:00Z`,
+    duration: 30,
+    status: "scheduled",
+    coachingItemId: "ci_01",
+    talkingPoints: [
+      { id: "tp_01", text: "Review daily workflow structure and time blocks", checked: false },
+      { id: "tp_02", text: "Discuss email vs prospecting time balance (85 min vs 65 min)", checked: false },
+      { id: "tp_03", text: "Build a time-blocking template together", checked: false },
+      { id: "tp_04", text: "Set clear expectations for context switch reduction", checked: false },
+    ],
+    actionItems: [
+      { id: "ai_01", text: "Create morning prospecting block (9-11am)", dueDate: tomorrowStr, completed: false },
+      { id: "ai_02", text: "Limit email checks to 3x per day", dueDate: tomorrowStr, completed: false },
+    ],
+    notes: "",
+  },
+  {
+    id: "cs_02",
+    tenantId: "t_01",
+    repId: "rep_03",
+    repName: "Aaliya Torres",
+    managerId: "m_01",
+    scheduledAt: `${todayStr}T14:30:00Z`,
+    duration: 30,
+    status: "scheduled",
+    coachingItemId: "ci_02",
+    talkingPoints: [
+      { id: "tp_05", text: "Understand how sequencer rollout is affecting workflow", checked: false },
+      { id: "tp_06", text: "Review follow-up discipline drop (from 56 to 38)", checked: false },
+      { id: "tp_07", text: "Identify if this is a training or process issue", checked: false },
+    ],
+    actionItems: [
+      { id: "ai_03", text: "Complete sequencer training module", dueDate: tomorrowStr, completed: false },
+    ],
+    notes: "",
+  },
+  {
+    id: "cs_03",
+    tenantId: "t_01",
+    repId: "rep_02",
+    repName: "Marcus Chen",
+    managerId: "m_01",
+    scheduledAt: `${tomorrowStr}T11:00:00Z`,
+    duration: 30,
+    status: "scheduled",
+    coachingItemId: "ci_04",
+    talkingPoints: [
+      { id: "tp_08", text: "Share top-performer pre-call research checklist", checked: false },
+      { id: "tp_09", text: "Discuss balancing research time with outreach volume", checked: false },
+    ],
+    actionItems: [],
+    notes: "",
   },
 ]
 
