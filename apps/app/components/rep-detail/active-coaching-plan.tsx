@@ -3,7 +3,7 @@
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { calculatePaceStatus, formatMetricName } from "@/lib/coaching/targets"
+import { calculatePaceStatus, formatMetricName } from "@/lib/coaching/target-utils"
 
 interface CoachingTarget {
   id: string
