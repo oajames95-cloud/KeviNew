@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ChevronLeft, Plus, TrendingUp, TrendingDown, Minus, ArrowUpRight, ArrowDownRight } from "lucide-react"
+import { ChevronLeft, Plus, Menu, TrendingUp, TrendingDown, Minus, ArrowUpRight, ArrowDownRight } from "lucide-react"
 import { useState } from "react"
 import { useMobileSidebar } from "@/components/shell/app-shell"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
