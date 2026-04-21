@@ -1,14 +1,14 @@
 "use client"
 
 import Link from "next/link"
-import { ChevronLeft, Plus, Menu, TrendingUp, TrendingDown, Minus, ArrowUpRight, ArrowDownRight } from "lucide-react"
+import { ChevronLeft, Plus, TrendingUp, TrendingDown, Minus, ArrowUpRight, ArrowDownRight } from "lucide-react"
 import { useState } from "react"
 import { useMobileSidebar } from "@/components/shell/app-shell"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { CoachingItemsList } from "./coaching-items-list"
-import { RecentSessionsList } from "./recent-sessions-list"
 import { CoachingSessionPanel } from "./coaching-session-panel"
+import { CoachingWorkflow } from "./coaching-workflow"
+import { generateSessionContext } from "@/lib/coaching-context"
 import { HourlyHeatmap } from "./hourly-heatmap"
 import { QualityMetrics } from "./quality-metrics"
 import { CRMAccountActivity } from "./crm-account-activity"
@@ -53,21 +53,22 @@ function getWeekDelta(current: number): { value: number; isPositive: boolean } {
 
 export function CoachingHub({ rep, targets = [], allReps = [] }: CoachingHubProps) {
   const { toggle } = useMobileSidebar()
-  const [isPanelOpen, setIsPanelOpen] = useState(false)
-  const [selectedSession, setSelectedSession] = useState<any>(null)
+  const [isWorkflowOpen, setIsWorkflowOpen] = useState(false)
   const [timeRange, setTimeRange] = useState<TimeRange>("week")
 
   // Generate team comparisons if all reps provided
   const comparisons = allReps.length > 0 ? compareRepToTeam(rep, allReps) : []
+  
+  // Generate session context for the workflow
+  const sessionContext = allReps.length > 0 ? generateSessionContext(rep, allReps) : undefined
 
-  const handleNewSession = () => {
-    setSelectedSession(null)
-    setIsPanelOpen(true)
+  const handleOpenSession = () => {
+    setIsWorkflowOpen(true)
   }
 
-  const handleEditSession = (session: any) => {
-    setSelectedSession(session)
-    setIsPanelOpen(true)
+  const handleSaveSession = (plan: any) => {
+    // TODO: Save to database
+    console.log("[v0] Coaching plan saved:", plan)
   }
 
   const metrics = [
@@ -104,9 +105,9 @@ export function CoachingHub({ rep, targets = [], allReps = [] }: CoachingHubProp
             </div>
           </div>
           <div className="ml-auto">
-            <Button size="sm" onClick={handleNewSession} className="gap-1.5">
+            <Button size="sm" onClick={handleOpenSession} className="gap-1.5 bg-blue-600 hover:bg-blue-700">
               <Plus className="w-4 h-4" />
-              New Session
+              Open Coaching Session
             </Button>
           </div>
         </div>
@@ -213,25 +214,6 @@ export function CoachingHub({ rep, targets = [], allReps = [] }: CoachingHubProp
             </div>
           )}
 
-          {/* Main Grid: Coaching Items + Recent Sessions */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left: Coaching Items */}
-            <div className="lg:col-span-2 space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-base font-semibold text-foreground">Active Focus Areas</h2>
-              </div>
-              <CoachingItemsList rep={rep} onPrepareSession={handleNewSession} />
-            </div>
-
-            {/* Right: Recent Sessions */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-base font-semibold text-foreground">Session History</h2>
-              </div>
-              <RecentSessionsList onEditSession={handleEditSession} />
-            </div>
-          </div>
-
           {/* CRM Account Activity */}
           <div className="rounded-xl border border-border bg-card p-6">
             <CRMAccountActivity repName={rep.name} />
@@ -271,12 +253,13 @@ export function CoachingHub({ rep, targets = [], allReps = [] }: CoachingHubProp
         </div>
       </main>
 
-      {/* Coaching Session Panel */}
-      <CoachingSessionPanel
+      {/* Coaching Workflow */}
+      <CoachingWorkflow
         rep={rep}
-        session={selectedSession}
-        isOpen={isPanelOpen}
-        onClose={() => setIsPanelOpen(false)}
+        isOpen={isWorkflowOpen}
+        onClose={() => setIsWorkflowOpen(false)}
+        onSave={handleSaveSession}
+        sessionContext={sessionContext}
       />
     </div>
   )
