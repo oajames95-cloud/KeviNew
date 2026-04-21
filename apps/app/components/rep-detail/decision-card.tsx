@@ -18,7 +18,6 @@ import { mockCoachingInsights } from "@/lib/mock-data"
 
 interface DecisionCardProps {
   rep: Rep
-  onStartSession?: () => void
 }
 
 const trendConfig = {
@@ -56,7 +55,7 @@ const trendConfig = {
   },
 }
 
-export function DecisionCard({ rep, onStartSession }: DecisionCardProps) {
+export function DecisionCard({ rep }: DecisionCardProps) {
   const [dismissed, setDismissed] = useState(false)
   const config = trendConfig[rep.trend]
   const Icon = config.icon
@@ -119,7 +118,7 @@ export function DecisionCard({ rep, onStartSession }: DecisionCardProps) {
         {/* Right: Actions */}
         <div className="flex items-center gap-2 shrink-0">
           {(rep.trend === "at-risk" || rep.trend === "drifting") && insight && (
-            <Button size="sm" className="h-8 text-xs gap-1.5" onClick={onStartSession}>
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
               <MessageSquare className="w-3.5 h-3.5" />
               {config.cta}
               <ChevronRight className="w-3 h-3" />
