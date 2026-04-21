@@ -3,12 +3,14 @@
 import Link from "next/link"
 import { ChevronLeft, Plus, Menu, TrendingUp, TrendingDown, Minus, ArrowUpRight, ArrowDownRight } from "lucide-react"
 import { useState } from "react"
+import { toast } from "sonner"
 import { useMobileSidebar } from "@/components/shell/app-shell"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { CoachingSessionPanel } from "./coaching-session-panel"
 import { CoachingWorkflow } from "./coaching-workflow"
 import { generateSessionContext } from "@/lib/coaching-context"
+import { saveCoachingSession } from "@/lib/coaching/sessions"
 import { HourlyHeatmap } from "./hourly-heatmap"
 import { QualityMetrics } from "./quality-metrics"
 import { CRMAccountActivity } from "./crm-account-activity"
@@ -66,9 +68,26 @@ export function CoachingHub({ rep, targets = [], allReps = [] }: CoachingHubProp
     setIsWorkflowOpen(true)
   }
 
-  const handleSaveSession = (plan: any) => {
-    // TODO: Save to database
-    console.log("[v0] Coaching plan saved:", plan)
+  const handleSaveSession = async (plan: any) => {
+    try {
+      // Call server action to save to Supabase
+      const result = await saveCoachingSession(
+        rep.id,
+        rep.tenantId,
+        plan,
+        undefined // coachingItemId optional
+      )
+
+      if (result.success) {
+        toast.success(`Session saved. ${result.targetsCount || 0} target${(result.targetsCount || 0) !== 1 ? 's' : ''} set for ${rep.name}.`)
+        setIsWorkflowOpen(false)
+      } else {
+        toast.error(result.error || 'Failed to save session')
+      }
+    } catch (error) {
+      console.error('[v0] Error saving session:', error)
+      toast.error('An error occurred while saving')
+    }
   }
 
   const metrics = [

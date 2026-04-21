@@ -1,16 +1,15 @@
 import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import { mockReps } from "@/lib/mock-data"
-import { CoachingHub } from "@/components/rep-detail/coaching-hub"
-import type { RepTrend, RepTarget, Rep } from "@/types"
+import { RepDetailClient } from "./rep-detail-client"
+import type { RepTrend, Rep } from "@/types"
 
 export const dynamic = "force-dynamic"
 
 export default async function RepDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-
-  let targets: RepTarget[] = []
   let allReps: Rep[] = mockReps
+  let coachingTargets: any[] = []
 
   try {
     const supabase = await createClient()
@@ -22,11 +21,25 @@ export default async function RepDetailPage({ params }: { params: Promise<{ id: 
       .eq("id", id)
       .single()
 
+    if (repError || !repData) {
+      const mockRep = mockReps.find((r) => r.id === id)
+      if (!mockRep) notFound()
+      return <RepDetailClient rep={mockRep!} coachingTargets={[]} />
+    }
+
     // Fetch all reps for comparison analysis
     const { data: allRepsData } = await supabase
       .from("reps")
       .select("id, organization_id, team_id, full_name, email, role, trend, top_rep_similarity, workflow_drift, prospecting_focus_time, follow_up_discipline, outbound_velocity, signal_confidence")
       .limit(50)
+
+    // Fetch active coaching targets
+    const { data: targetData } = await supabase
+      .from('coaching_targets')
+      .select('*')
+      .eq('rep_id', id)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
 
     // Fetch daily metrics and outcomes in parallel
     const [{ data: dailyMetrics }, { data: outcomes }] = await Promise.all([
@@ -41,12 +54,6 @@ export default async function RepDetailPage({ params }: { params: Promise<{ id: 
         .eq("rep_id", id)
         .order("date", { ascending: false }),
     ])
-
-    if (repError || !repData) {
-      const mockRep = mockReps.find((r) => r.id === id)
-      if (!mockRep) notFound()
-      return <CoachingHub rep={mockRep!} targets={targets} allReps={allReps} />
-    }
 
     // Map all reps for comparison
     if (allRepsData && allRepsData.length > 0) {
@@ -72,6 +79,9 @@ export default async function RepDetailPage({ params }: { params: Promise<{ id: 
         dataSourceIds: [],
       }))
     }
+
+    // Set coaching targets
+    coachingTargets = targetData || []
 
     // Build the current rep object
     const rep: Rep = {
@@ -116,10 +126,10 @@ export default async function RepDetailPage({ params }: { params: Promise<{ id: 
       dataSourceIds: [],
     }
 
-    return <CoachingHub rep={rep} targets={targets} allReps={allReps} />
+    return <RepDetailClient rep={rep} coachingTargets={coachingTargets} />
   } catch (error) {
     const mockRep = mockReps.find((r) => r.id === id)
     if (!mockRep) notFound()
-    return <CoachingHub rep={mockRep} targets={targets} allReps={allReps} />
+    return <RepDetailClient rep={mockRep} coachingTargets={[]} />
   }
 }
