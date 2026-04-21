@@ -563,6 +563,8 @@ export const mockRepTargets: RepTarget[] = [
     status: "active",
   },
 ]
+
+export const mockDataSources = [
   {
     id: "ds_01",
     tenantId: "t_01",

@@ -24,10 +24,10 @@ export interface RepVsTeamComparison {
 
 export interface TargetContext {
   target: RepTarget
-  playbook DefaultValue?: number // What the playbook says
+  playbookDefaultValue?: number
   teamAverage?: number
   topPerformerValue?: number
-  isOverride: boolean // true if rep target differs from playbook default
+  isOverride: boolean
 }
 
 // Analyze what top performers do differently
@@ -162,7 +162,7 @@ function generateComparisonInsight(metric: string, repValue: number, teamAvg: nu
 export function analyzeTargetContext(repTargets: RepTarget[], playbookDefaults: Map<string, number>, teamAverages: Map<string, number>, topPerformerValues: Map<string, number>): TargetContext[] {
   return repTargets.map(target => ({
     target,
-    playbook DefaultValue: playbookDefaults.get(target.metric),
+    playbookDefaultValue: playbookDefaults.get(target.metric),
     teamAverage: teamAverages.get(target.metric),
     topPerformerValue: topPerformerValues.get(target.metric),
     isOverride: (playbookDefaults.get(target.metric) || 0) !== target.targetValue,

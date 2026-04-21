@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
-import { mockReps, mockRepTargets } from "@/lib/mock-data"
+import { mockReps } from "@/lib/mock-data"
 import { CoachingHub } from "@/components/rep-detail/coaching-hub"
 import type { RepTrend, RepTarget, Rep } from "@/types"
 
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic"
 export default async function RepDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
 
-  let targets: RepTarget[] = mockRepTargets.filter(t => t.repId === id)
+  let targets: RepTarget[] = []
   let allReps: Rep[] = mockReps
 
   try {
