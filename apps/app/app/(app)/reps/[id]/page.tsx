@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import { mockReps } from "@/lib/mock-data"
-import { RepDetailClient } from "./rep-detail-client"
+import { CoachingHub } from "@/components/rep-detail/coaching-hub"
 import type { RepTrend } from "@/types"
 
 export const dynamic = "force-dynamic"
@@ -34,7 +34,7 @@ export default async function RepDetailPage({ params }: { params: Promise<{ id: 
     if (repError || !repData) {
       const mockRep = mockReps.find((r) => r.id === id)
       if (!mockRep) notFound()
-      return <RepDetailClient rep={mockRep!} />
+      return <CoachingHub rep={mockRep!} />
     }
 
     const rep = {
@@ -79,10 +79,10 @@ export default async function RepDetailPage({ params }: { params: Promise<{ id: 
       dataSourceIds: [],
     }
 
-    return <RepDetailClient rep={rep} />
+    return <CoachingHub rep={rep} />
   } catch {
     const mockRep = mockReps.find((r) => r.id === id)
     if (!mockRep) notFound()
-    return <RepDetailClient rep={mockRep!} />
+    return <CoachingHub rep={mockRep!} />
   }
 }
