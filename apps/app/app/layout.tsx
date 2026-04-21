@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from "next"
-import { Inter, JetBrains_Mono } from "next/font/google"
+import { Montserrat, JetBrains_Mono } from "next/font/google"
 import "./globals.css"
 
-const inter = Inter({
+const montserrat = Montserrat({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-montserrat",
 })
 
 const jetbrainsMono = JetBrains_Mono({
@@ -20,15 +20,12 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f5f5f5" },
-    { media: "(prefers-color-scheme: dark)", color: "#0d0e12" },
-  ],
+  themeColor: "#FAFAF9",
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} bg-background`}>
+    <html lang="en" className={`${montserrat.variable} ${jetbrainsMono.variable} bg-background`}>
       <body className="font-sans antialiased">{children}</body>
     </html>
   )

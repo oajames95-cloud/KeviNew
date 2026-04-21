@@ -1,14 +1,15 @@
 "use client"
 
-import { X, Plus, Check } from "lucide-react"
-import { useEffect, useState } from "react"
+import { X, Plus, Check, Calendar, MessageSquare, ListTodo, Trash2 } from "lucide-react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import type { Rep } from "@/types"
+import { cn } from "@/lib/utils"
 
 interface CoachingSessionPanelProps {
   rep: Rep
@@ -27,6 +28,7 @@ interface ActionItem {
 interface TalkingPoint {
   id: string
   text: string
+  checked: boolean
 }
 
 export function CoachingSessionPanel({
@@ -35,18 +37,34 @@ export function CoachingSessionPanel({
   isOpen,
   onClose,
 }: CoachingSessionPanelProps) {
-  const [sessionDate, setSessionDate] = useState(session?.date?.toISOString().split("T")[0] || new Date().toISOString().split("T")[0])
-  const [notes, setNotes] = useState(session?.notes || "")
-  const [actionItems, setActionItems] = useState<ActionItem[]>(session?.actionItems?.map((item: any, idx: number) => ({
-    id: `action-${idx}`,
-    text: typeof item === "string" ? item : item.text,
-    completed: typeof item === "string" ? false : item.completed,
-    dueDate: typeof item === "string" ? "" : item.dueDate,
-  })) || [])
-  const [talkingPoints, setTalkingPoints] = useState<TalkingPoint[]>(session?.talkingPoints || [])
-  const [coachingItemId, setCoachingItemId] = useState(session?.coachingItemId || "")
+  const [sessionDate, setSessionDate] = useState(new Date().toISOString().split("T")[0])
+  const [notes, setNotes] = useState("")
+  const [actionItems, setActionItems] = useState<ActionItem[]>([])
+  const [talkingPoints, setTalkingPoints] = useState<TalkingPoint[]>([
+    { id: "tp-1", text: "Review current workflow and identify friction points", checked: false },
+    { id: "tp-2", text: "Check tool adoption and setup issues", checked: false },
+    { id: "tp-3", text: "Discuss time-blocking strategies", checked: false },
+  ])
   const [newActionText, setNewActionText] = useState("")
   const [newTalkingPointText, setNewTalkingPointText] = useState("")
+
+  // Reset state when session changes
+  useEffect(() => {
+    if (session) {
+      setSessionDate(session.date || new Date().toISOString().split("T")[0])
+      setNotes(session.notes || "")
+      setActionItems(session.actionItems?.map((item: any, idx: number) => ({
+        id: `action-${idx}`,
+        text: typeof item === "string" ? item : item.text,
+        completed: typeof item === "string" ? false : item.completed,
+        dueDate: typeof item === "string" ? "" : item.dueDate,
+      })) || [])
+    } else {
+      setSessionDate(new Date().toISOString().split("T")[0])
+      setNotes("")
+      setActionItems([])
+    }
+  }, [session])
 
   const addActionItem = () => {
     if (newActionText.trim()) {
@@ -70,6 +88,7 @@ export function CoachingSessionPanel({
         {
           id: `point-${Date.now()}`,
           text: newTalkingPointText,
+          checked: false,
         },
       ])
       setNewTalkingPointText("")
@@ -82,6 +101,12 @@ export function CoachingSessionPanel({
     ))
   }
 
+  const toggleTalkingPoint = (id: string) => {
+    setTalkingPoints(talkingPoints.map((point) =>
+      point.id === id ? { ...point, checked: !point.checked } : point
+    ))
+  }
+
   const removeActionItem = (id: string) => {
     setActionItems(actionItems.filter((item) => item.id !== id))
   }
@@ -90,36 +115,35 @@ export function CoachingSessionPanel({
     setTalkingPoints(talkingPoints.filter((point) => point.id !== id))
   }
 
-  if (!isOpen) return null
+  const handleSave = () => {
+    console.log("[v0] Saving session", { 
+      sessionDate, 
+      notes, 
+      actionItems, 
+      talkingPoints: talkingPoints.filter(p => p.checked),
+    })
+    onClose()
+  }
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      
-      <div className="absolute right-0 top-0 bottom-0 w-full max-w-2xl bg-background border-l border-border shadow-lg flex flex-col">
+    <Sheet open={isOpen} onOpenChange={onClose}>
+      <SheetContent className="w-full sm:max-w-[480px] p-0 flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-border">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">
-              {session ? "Edit Session" : "New Coaching Session"}
-            </h2>
-            <p className="text-sm text-muted-foreground mt-1">{rep.name}</p>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
-            onClick={onClose}
-          >
-            <X className="w-4 h-4" />
-          </Button>
-        </div>
+        <SheetHeader className="p-6 border-b border-border shrink-0">
+          <SheetTitle className="text-lg font-semibold">
+            {session ? "Edit Session" : "New Coaching Session"}
+          </SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">
+            {rep.name} · {rep.role}
+          </SheetDescription>
+        </SheetHeader>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Session Date */}
           <div className="space-y-2">
-            <Label htmlFor="session-date" className="text-sm font-medium">
+            <Label htmlFor="session-date" className="text-sm font-medium flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-muted-foreground" />
               Session Date
             </Label>
             <Input
@@ -127,59 +151,48 @@ export function CoachingSessionPanel({
               type="date"
               value={sessionDate}
               onChange={(e) => setSessionDate(e.target.value)}
-              className="h-9"
-            />
-          </div>
-
-          {/* Coaching Item Link */}
-          <div className="space-y-2">
-            <Label htmlFor="coaching-item" className="text-sm font-medium">
-              Linked Coaching Item
-            </Label>
-            <Select value={coachingItemId} onValueChange={setCoachingItemId}>
-              <SelectTrigger id="coaching-item" className="h-9">
-                <SelectValue placeholder="Select a coaching item..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">No Link</SelectItem>
-                <SelectItem value="call-connect">Call Connect Rate</SelectItem>
-                <SelectItem value="pipeline">Meeting-to-Pipeline Ratio</SelectItem>
-                <SelectItem value="followup">Email Follow-Up Discipline</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Notes */}
-          <div className="space-y-2">
-            <Label htmlFor="notes" className="text-sm font-medium">
-              Session Notes
-            </Label>
-            <Textarea
-              id="notes"
-              placeholder="What did you discuss? Key insights and takeaways..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="min-h-[100px]"
+              className="h-10"
             />
           </div>
 
           {/* Talking Points */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium">Talking Points</Label>
+            <Label className="text-sm font-medium flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-muted-foreground" />
+              Talking Points
+            </Label>
+            <p className="text-xs text-muted-foreground -mt-1">
+              Check off topics as you discuss them
+            </p>
             <div className="space-y-2">
               {talkingPoints.map((point) => (
                 <div
                   key={point.id}
-                  className="flex items-start gap-2 bg-secondary/50 p-3 rounded-lg group"
+                  className={cn(
+                    "flex items-start gap-3 p-3 rounded-lg border transition-colors group",
+                    point.checked 
+                      ? "bg-emerald-50 border-emerald-200" 
+                      : "bg-card border-border hover:border-primary/20"
+                  )}
                 >
-                  <p className="text-sm text-foreground flex-1">{point.text}</p>
+                  <Checkbox
+                    checked={point.checked}
+                    onCheckedChange={() => toggleTalkingPoint(point.id)}
+                    className="mt-0.5"
+                  />
+                  <p className={cn(
+                    "text-sm flex-1",
+                    point.checked ? "text-emerald-700" : "text-foreground"
+                  )}>
+                    {point.text}
+                  </p>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={() => removeTalkingPoint(point.id)}
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <Trash2 className="w-3 h-3 text-muted-foreground" />
                   </Button>
                 </div>
               ))}
@@ -189,36 +202,61 @@ export function CoachingSessionPanel({
                 placeholder="Add a talking point..."
                 value={newTalkingPointText}
                 onChange={(e) => setNewTalkingPointText(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && addTalkingPoint()}
+                onKeyDown={(e) => e.key === "Enter" && addTalkingPoint()}
                 className="h-9 text-sm"
               />
               <Button
                 variant="outline"
                 size="sm"
                 onClick={addTalkingPoint}
-                className="h-9 w-9 p-0"
+                className="h-9 w-9 p-0 shrink-0"
               >
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
           </div>
 
+          {/* Notes */}
+          <div className="space-y-2">
+            <Label htmlFor="notes" className="text-sm font-medium">
+              Session Notes
+            </Label>
+            <Textarea
+              id="notes"
+              placeholder="Key insights, observations, and follow-up items..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="min-h-[120px] text-sm"
+            />
+          </div>
+
           {/* Action Items */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium">Action Items</Label>
+            <Label className="text-sm font-medium flex items-center gap-2">
+              <ListTodo className="w-4 h-4 text-muted-foreground" />
+              Action Items
+            </Label>
             <div className="space-y-2">
               {actionItems.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-start gap-3 bg-secondary/50 p-3 rounded-lg group"
+                  className={cn(
+                    "flex items-start gap-3 p-3 rounded-lg border transition-colors group",
+                    item.completed 
+                      ? "bg-muted/50 border-border" 
+                      : "bg-card border-border hover:border-primary/20"
+                  )}
                 >
                   <Checkbox
                     checked={item.completed}
-                    onChange={() => toggleActionItem(item.id)}
-                    className="mt-1"
+                    onCheckedChange={() => toggleActionItem(item.id)}
+                    className="mt-0.5"
                   />
-                  <div className="flex-1">
-                    <p className={`text-sm ${item.completed ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                  <div className="flex-1 min-w-0">
+                    <p className={cn(
+                      "text-sm",
+                      item.completed ? "line-through text-muted-foreground" : "text-foreground"
+                    )}>
                       {item.text}
                     </p>
                     {item.dueDate && (
@@ -230,10 +268,10 @@ export function CoachingSessionPanel({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={() => removeActionItem(item.id)}
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <Trash2 className="w-3 h-3 text-muted-foreground" />
                   </Button>
                 </div>
               ))}
@@ -243,14 +281,14 @@ export function CoachingSessionPanel({
                 placeholder="Add an action item..."
                 value={newActionText}
                 onChange={(e) => setNewActionText(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && addActionItem()}
+                onKeyDown={(e) => e.key === "Enter" && addActionItem()}
                 className="h-9 text-sm"
               />
               <Button
                 variant="outline"
                 size="sm"
                 onClick={addActionItem}
-                className="h-9 w-9 p-0"
+                className="h-9 w-9 p-0 shrink-0"
               >
                 <Plus className="w-4 h-4" />
               </Button>
@@ -259,26 +297,23 @@ export function CoachingSessionPanel({
         </div>
 
         {/* Footer */}
-        <div className="border-t border-border p-6 flex gap-2 justify-end bg-card">
+        <div className="border-t border-border p-4 flex gap-3 justify-end bg-muted/30 shrink-0">
           <Button
             variant="outline"
             onClick={onClose}
-            className="h-9 text-sm px-4"
+            className="h-10"
           >
             Cancel
           </Button>
           <Button
-            className="h-9 text-sm px-4 gap-1.5"
-            onClick={() => {
-              console.log("[v0] Saving session", { sessionDate, notes, actionItems, talkingPoints, coachingItemId })
-              onClose()
-            }}
+            onClick={handleSave}
+            className="h-10 gap-2"
           >
             <Check className="w-4 h-4" />
-            Save Session
+            Complete Session
           </Button>
         </div>
-      </div>
-    </div>
+      </SheetContent>
+    </Sheet>
   )
 }
