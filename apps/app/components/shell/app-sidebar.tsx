@@ -10,6 +10,8 @@ import {
   Activity,
   ChevronsUpDown,
   Check,
+  LayoutDashboard,
+  BookOpen,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { mockManager, mockTenant, mockTeams } from "@/lib/mock-data"
@@ -30,6 +32,11 @@ const navItems = [
     icon: CalendarDays,
   },
   {
+    label: "Overview",
+    href: "/overview",
+    icon: LayoutDashboard,
+  },
+  {
     label: "Reps",
     href: "/reps",
     icon: Users,
@@ -38,6 +45,11 @@ const navItems = [
     label: "Coaching",
     href: "/coaching",
     icon: MessageSquareMore,
+  },
+  {
+    label: "Playbook",
+    href: "/playbook",
+    icon: BookOpen,
   },
   {
     label: "Settings",
