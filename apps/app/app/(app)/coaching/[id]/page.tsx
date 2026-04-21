@@ -1,5 +1,3 @@
-'use server'
-
 import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import { CoachingDashboardClient } from "./coaching-dashboard-client"

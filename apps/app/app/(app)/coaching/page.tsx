@@ -1,5 +1,3 @@
-'use server'
-
 import { createClient } from "@/lib/supabase/server"
 import { CoachingIndexClient } from "./coaching-index-client"
 import { mockCoachingSessions, mockReps } from "@/lib/mock-data"
