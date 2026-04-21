@@ -2,18 +2,21 @@
 
 import { X, Plus, Check, Calendar, MessageSquare, ListTodo, Trash2 } from "lucide-react"
 import { useState, useEffect } from "react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
+import { createClient } from "@/lib/supabase/client"
 import type { Rep } from "@/types"
 import { cn } from "@/lib/utils"
 
 interface CoachingSessionPanelProps {
   rep: Rep
   session?: any
+  coachingItemId?: string
   isOpen: boolean
   onClose: () => void
 }
@@ -34,6 +37,7 @@ interface TalkingPoint {
 export function CoachingSessionPanel({
   rep,
   session,
+  coachingItemId,
   isOpen,
   onClose,
 }: CoachingSessionPanelProps) {
@@ -115,13 +119,59 @@ export function CoachingSessionPanel({
     setTalkingPoints(talkingPoints.filter((point) => point.id !== id))
   }
 
-  const handleSave = () => {
-    console.log("[v0] Saving session", { 
-      sessionDate, 
-      notes, 
-      actionItems, 
-      talkingPoints: talkingPoints.filter(p => p.checked),
-    })
+  const objective = talkingPoints.find((p) => p.checked)?.text || notes
+
+  const handleSave = async () => {
+    const supabase = createClient()
+
+    const { data: sessionData, error: sessionError } = await supabase
+      .from("coaching_sessions")
+      .insert({
+        organization_id: rep.tenantId,
+        rep_id: rep.id,
+        coaching_item_id: coachingItemId ?? null,
+        objective,
+        notes,
+        follow_up_date: sessionDate,
+        session_type: "ad_hoc",
+      })
+      .select("id")
+      .single()
+
+    if (sessionError) {
+      console.error("[coaching] insert coaching_sessions failed", sessionError)
+      toast.error("Failed to save session")
+      return
+    }
+
+    if (actionItems.length > 0) {
+      const { error: actionsError } = await supabase
+        .from("coaching_actions")
+        .insert(
+          actionItems.map((item) => ({
+            session_id: sessionData.id,
+            rep_id: rep.id,
+            description: item.text,
+            due_date: item.dueDate || null,
+          }))
+        )
+
+      if (actionsError) {
+        console.error("[coaching] insert coaching_actions failed", actionsError)
+        toast.error("Session saved but action items failed to save")
+        onClose()
+        return
+      }
+    }
+
+    if (coachingItemId) {
+      await supabase
+        .from("coaching_items")
+        .update({ status: "coached", updated_at: new Date().toISOString() })
+        .eq("id", coachingItemId)
+    }
+
+    toast.success("Session saved")
     onClose()
   }
 
@@ -307,6 +357,7 @@ export function CoachingSessionPanel({
           </Button>
           <Button
             onClick={handleSave}
+            disabled={!objective.trim()}
             className="h-10 gap-2"
           >
             <Check className="w-4 h-4" />

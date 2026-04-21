@@ -3,8 +3,10 @@
 import { useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, Lightbulb, TrendingUp, TrendingDown, AlertCircle, CheckCircle2, Plus, X } from "lucide-react"
+import { toast } from "sonner"
 import type { Rep, CoachingSession, RepTarget, CoachingInsight } from "@/types"
 import { Button } from "@/components/ui/button"
+import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 
 interface CoachingSessionWorkspaceProps {
@@ -29,6 +31,32 @@ export function CoachingSessionWorkspace({
     minute: "2-digit",
     hour12: true,
   })
+
+  const handleCompleteSession = async () => {
+    const supabase = createClient()
+    const now = new Date().toISOString()
+
+    const { error: sessionError } = await supabase
+      .from("coaching_sessions")
+      .update({ status: "completed", completed_at: now })
+      .eq("id", session.id)
+
+    if (sessionError) {
+      console.error("[coaching] update coaching_sessions failed", sessionError)
+      toast.error("Failed to complete session")
+      return
+    }
+
+    if (session.coachingItemId) {
+      await supabase
+        .from("coaching_items")
+        .update({ status: "coached", updated_at: now })
+        .eq("id", session.coachingItemId)
+    }
+
+    toast.success("Session completed")
+    onClose?.()
+  }
 
   const generateWhyMatters = () => {
     if (insight?.reason) {
@@ -223,7 +251,7 @@ export function CoachingSessionWorkspace({
 
       <div className="border-t px-6 py-4 flex gap-2">
         <Button variant="outline" className="flex-1">Save Notes</Button>
-        <Button className="flex-1">Complete Session</Button>
+        <Button className="flex-1" onClick={handleCompleteSession}>Complete Session</Button>
       </div>
     </div>
   )
