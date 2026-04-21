@@ -1,4 +1,4 @@
-import type { Rep, DailyActivity } from "@/types"
+import type { Rep, DailyActivity, RepTarget, CoachingInsight, PatternShift } from "@/types"
 
 export type SignalType =
   | "momentum"
@@ -6,6 +6,9 @@ export type SignalType =
   | "efficiency-issue"
   | "drop-off"
   | "positive-outlier"
+  | "pacing_risk"
+  | "pattern_shift"
+  | "coaching_ready"
 
 export interface ManagerSignal {
   id: string
@@ -17,9 +20,51 @@ export interface ManagerSignal {
   category: string
   priority: number // 1 = highest
   timestamp: Date
+  actionable?: boolean
+  actionLabel?: string
+  relatedTargetId?: string
+  relatedCoachingInsightId?: string
 }
 
-export function generateSignals(reps: Rep[]): ManagerSignal[] {
+/**
+ * Generate comprehensive signals combining activity analysis with target pacing and coaching insights
+ */
+export function generateSignals(
+  reps: Rep[],
+  targets?: Map<string, RepTarget[]>,
+  insights?: Map<string, CoachingInsight[]>
+): ManagerSignal[] {
+  const signals: ManagerSignal[] = []
+  let signalId = 0
+
+  // Generate activity-based signals (existing logic)
+  const activitySignals = generateActivitySignals(reps)
+  signals.push(...activitySignals)
+
+  // Generate target pacing signals (new logic)
+  if (targets) {
+    const pacingSignals = generateTargetPacingSignals(reps, targets)
+    signals.push(...pacingSignals)
+  }
+
+  // Generate coaching readiness signals (new logic)
+  if (insights) {
+    const coachingSignals = generateCoachingSignals(reps, insights)
+    signals.push(...coachingSignals)
+  }
+
+  // Deduplicate and prioritize
+  const uniqueSignals = Array.from(
+    new Map(signals.map((s) => [s.repId + s.type, s])).values()
+  )
+
+  return uniqueSignals.sort((a, b) => a.priority - b.priority).slice(0, 10) // Top 10 signals
+}
+
+/**
+ * Activity-based signals (existing logic)
+ */
+function generateActivitySignals(reps: Rep[]): ManagerSignal[] {
   const signals: ManagerSignal[] = []
   let signalId = 0
 
@@ -30,7 +75,6 @@ export function generateSignals(reps: Rep[]): ManagerSignal[] {
 
     const recentDays = rep.recentActivity.slice(0, 5) // Last 5 days
     const previousDays = rep.recentActivity.slice(5, 10) // 5 days before that
-    const last7 = recentDays
     const last14 = rep.recentActivity.slice(0, 14)
 
     // Calculate averages
@@ -48,12 +92,6 @@ export function generateSignals(reps: Rep[]): ManagerSignal[] {
       meetings: avg(previousDays.map((d) => d.meetingsBooked)),
       replies: avg(previousDays.map((d) => d.followUpRate)),
       connects: avg(previousDays.map((d) => d.connectRate)),
-    }
-
-    const fourWeekAvg = {
-      prospecting: avg(last14.map((d) => d.timeProspecting)),
-      calls: avg(last14.map((d) => d.callsDialed)),
-      meetings: avg(last14.map((d) => d.meetingsBooked)),
     }
 
     // Check for inactivity block today
@@ -95,8 +133,7 @@ export function generateSignals(reps: Rep[]): ManagerSignal[] {
     }
 
     // Risk: projected to fall behind SQL pace based on replies/activity
-    const meetingToPipelineRatio = recentAvg.meetings / Math.max(recentAvg.prospecting, 1)
-    const projectedWeeklyMeetings = (recentAvg.meetings * 7) / 5 // Extrapolate to 7 days
+    const projectedWeeklyMeetings = (recentAvg.meetings * 7) / 5
     if (projectedWeeklyMeetings < 8 && recentAvg.prospecting > 0) {
       const replyDropPercent = (
         ((recentAvg.replies - previousAvg.replies) / Math.max(previousAvg.replies, 0.01)) *
@@ -161,10 +198,7 @@ export function generateSignals(reps: Rep[]): ManagerSignal[] {
     }
 
     // Positive outlier: pacing ahead on SQL or strong metrics
-    if (
-      recentAvg.meetings > previousAvg.meetings * 1.2 &&
-      previousAvg.meetings > 0
-    ) {
+    if (recentAvg.meetings > previousAvg.meetings * 1.2 && previousAvg.meetings > 0) {
       const weeklyPace = (recentAvg.meetings * 7) / 5
       const percent = (
         ((recentAvg.meetings - previousAvg.meetings) / previousAvg.meetings) *
@@ -208,13 +242,94 @@ export function generateSignals(reps: Rep[]): ManagerSignal[] {
     }
   })
 
-  // Deduplicate and prioritize
-  const uniqueSignals = Array.from(
-    new Map(signals.map((s) => [s.repId + s.type, s])).values()
-  )
-
-  return uniqueSignals.sort((a, b) => a.priority - b.priority).slice(0, 6) // Top 6 signals
+  return signals
 }
+
+/**
+ * Target pacing signals - show rep progress toward coaching targets
+ */
+function generateTargetPacingSignals(reps: Rep[], targets: Map<string, RepTarget[]>): ManagerSignal[] {
+  const signals: ManagerSignal[] = []
+  let signalId = 0
+
+  reps.forEach((rep) => {
+    const repTargets = targets.get(rep.id) || []
+
+    for (const target of repTargets.filter((t) => t.status === "active")) {
+      const daysIntoFrame = calculateDaysIntoFrame(target.timeFrame, new Date())
+
+      // Only generate signal if 20%+ into the time frame
+      if (daysIntoFrame < 0.2) continue
+
+      // Mock: Get current value (would come from real data)
+      const currentValue = 42
+      const expectedValue = (target.targetValue / getDaysInFrame(target.timeFrame)) * daysIntoFrame
+      const pacePercent = (currentValue / expectedValue) * 100
+
+      if (pacePercent < 70) {
+        signals.push({
+          id: `pace_${target.id}_${signalId++}`,
+          repId: rep.id,
+          repName: rep.name,
+          type: "pacing_risk",
+          headline: `${rep.name} is behind pace on ${target.metric}`,
+          supportText: `At ${Math.round(pacePercent)}% of target pace for this ${target.timeFrame}. ${target.notes ? `Note: "${target.notes}"` : ""}`,
+          category: "Target Progress",
+          priority: pacePercent < 50 ? 1 : 2,
+          timestamp: new Date(),
+          actionable: true,
+          actionLabel: "Check in",
+          relatedTargetId: target.id,
+        })
+      }
+    }
+  })
+
+  return signals
+}
+
+/**
+ * Coaching readiness signals - surface flagged insights ready for session
+ */
+function generateCoachingSignals(reps: Rep[], insights: Map<string, CoachingInsight[]>): ManagerSignal[] {
+  const signals: ManagerSignal[] = []
+  let signalId = 0
+  const now = new Date()
+
+  reps.forEach((rep) => {
+    const repInsights = insights.get(rep.id) || []
+
+    for (const insight of repInsights) {
+      // Only surface if flagged recently (within last 7 days)
+      const flaggedDaysAgo = Math.floor(
+        (now.getTime() - new Date(insight.flaggedAt).getTime()) / (1000 * 60 * 60 * 24)
+      )
+
+      if (flaggedDaysAgo > 7) continue
+
+      signals.push({
+        id: `coaching_${insight.id}_${signalId++}`,
+        repId: rep.id,
+        repName: rep.name,
+        type: "coaching_ready",
+        headline: `Coaching opportunity: ${rep.name} — ${insight.theme}`,
+        supportText: insight.reason,
+        category: "Coaching",
+        priority: insight.severity === "critical" ? 1 : insight.severity === "high" ? 2 : 3,
+        timestamp: new Date(insight.flaggedAt),
+        actionable: true,
+        actionLabel: "Schedule session",
+        relatedCoachingInsightId: insight.id,
+      })
+    }
+  })
+
+  return signals
+}
+
+// ─────────────────────────────────────────────
+// Helper Functions
+// ─────────────────────────────────────────────
 
 function avg(numbers: number[]): number {
   if (numbers.length === 0) return 0
@@ -231,4 +346,54 @@ function getConsecutiveDaysBelow(days: DailyActivity[], threshold: number): numb
     }
   }
   return Math.max(1, count)
+}
+
+function calculateDaysIntoFrame(timeFrame: "daily" | "weekly" | "monthly", now: Date): number {
+  const day = now.getDate()
+
+  switch (timeFrame) {
+    case "daily":
+      return 1 // Always 100% through the day
+    case "weekly": {
+      const monday = new Date(now)
+      const dayOfWeek = monday.getDay()
+      monday.setDate(monday.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
+      const daysSinceMonday = Math.floor((now.getTime() - monday.getTime()) / (1000 * 60 * 60 * 24))
+      return daysSinceMonday / 7
+    }
+    case "monthly": {
+      return day / 31
+    }
+  }
+}
+
+function getDaysInFrame(timeFrame: "daily" | "weekly" | "monthly"): number {
+  switch (timeFrame) {
+    case "daily":
+      return 1
+    case "weekly":
+      return 7
+    case "monthly":
+      return 31
+  }
+}
+
+/**
+ * Group signals by type for display organization
+ */
+export function groupSignalsByType(signals: ManagerSignal[]): Record<string, ManagerSignal[]> {
+  return signals.reduce((groups, signal) => {
+    if (!groups[signal.type]) {
+      groups[signal.type] = []
+    }
+    groups[signal.type].push(signal)
+    return groups
+  }, {} as Record<string, ManagerSignal[]>)
+}
+
+/**
+ * Get only high-priority signals for alert display
+ */
+export function getHighPrioritySignals(signals: ManagerSignal[], limit = 5): ManagerSignal[] {
+  return signals.filter((s) => s.priority <= 2).slice(0, limit)
 }

@@ -12,14 +12,16 @@ import { CoachingSessionPanel } from "./coaching-session-panel"
 import { HourlyHeatmap } from "./hourly-heatmap"
 import { QualityMetrics } from "./quality-metrics"
 import { CRMAccountActivity } from "./crm-account-activity"
-import { TargetPacing } from "@/components/shared/target-pacing"
-import { TimeFilter, type TimeRange } from "@/components/shared/time-filter"
+import { RepComparison } from "./rep-comparison"
+import { TargetContext } from "@/components/shared/target-context"
+import { compareRepToTeam } from "@/lib/performance-patterns"
 import type { Rep, RepTrend, RepTarget } from "@/types"
 import { cn } from "@/lib/utils"
 
 interface CoachingHubProps {
   rep: Rep
   targets?: RepTarget[]
+  allReps?: Rep[]  // For comparisons
 }
 
 function initials(name: string) {
@@ -47,11 +49,14 @@ function getWeekDelta(current: number): { value: number; isPositive: boolean } {
   return { value: Math.abs(delta), isPositive: delta >= 0 }
 }
 
-export function CoachingHub({ rep, targets = [] }: CoachingHubProps) {
+export function CoachingHub({ rep, targets = [], allReps = [] }: CoachingHubProps) {
   const { toggle } = useMobileSidebar()
   const [isPanelOpen, setIsPanelOpen] = useState(false)
   const [selectedSession, setSelectedSession] = useState<any>(null)
   const [timeRange, setTimeRange] = useState<TimeRange>("week")
+
+  // Generate team comparisons if all reps provided
+  const comparisons = allReps.length > 0 ? compareRepToTeam(rep, allReps) : []
 
   const handleNewSession = () => {
     setSelectedSession(null)
@@ -184,13 +189,27 @@ export function CoachingHub({ rep, targets = [] }: CoachingHubProps) {
               />
             </div>
 
-            {/* Target Pacing */}
-            {targets.length > 0 && (
+            {/* Rep vs Team Comparison */}
+            {comparisons.length > 0 && (
               <div className="rounded-xl border border-border bg-card p-6">
-                <TargetPacing targets={targets} />
+                <RepComparison comparisons={comparisons} />
               </div>
             )}
           </div>
+
+          {/* Active Targets with Context */}
+          {targets.length > 0 && (
+            <div className="rounded-xl border border-border bg-card p-6 space-y-3">
+              <h3 className="text-base font-semibold text-foreground">Active Coaching Targets</h3>
+              <TargetContext 
+                targets={targets.map(t => ({
+                  target: t,
+                  isOverride: true,
+                  playbookDefault: 100, // Would come from playbook
+                }))}
+              />
+            </div>
+          )}
 
           {/* Main Grid: Coaching Items + Recent Sessions */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -215,8 +234,6 @@ export function CoachingHub({ rep, targets = [] }: CoachingHubProps) {
           <div className="rounded-xl border border-border bg-card p-6">
             <CRMAccountActivity repName={rep.name} />
           </div>
-
-          {/* Collapsible Score Breakdown */}
           <details className="group rounded-xl border border-border bg-card">
             <summary className="flex items-center justify-between p-4 cursor-pointer list-none">
               <h3 className="text-sm font-semibold text-foreground">Full Score Breakdown</h3>
