@@ -2,10 +2,12 @@
 
 import Link from "next/link"
 import { ArrowRight, AlertCircle, AlertTriangle, Info, CheckCircle2, Menu } from "lucide-react"
-import type { CoachingInsight, RepTrend } from "@/types"
+import type { CoachingInsight, RepTrend, Rep } from "@/types"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useMobileSidebar } from "@/components/shell/app-shell"
+import { SignalAlerts } from "@/components/today/signal-alerts"
+import { generateSignals } from "@/lib/signal-generator"
 
 interface TodayItem extends Omit<CoachingInsight, "repName"> {
   repName: string
@@ -20,6 +22,7 @@ interface TodayItem extends Omit<CoachingInsight, "repName"> {
 
 interface TodayClientProps {
   items: TodayItem[]
+  reps: Rep[]
 }
 
 const severityConfig = {
@@ -57,8 +60,11 @@ const severityConfig = {
   },
 }
 
-export function TodayClient({ items }: TodayClientProps) {
+export function TodayClient({ items, reps }: TodayClientProps) {
   const { toggle } = useMobileSidebar()
+  
+  // Generate signals from rep data
+  const signals = generateSignals(reps)
   
   // Sort by severity
   const sortedItems = [...items].sort((a, b) => {
@@ -95,6 +101,9 @@ export function TodayClient({ items }: TodayClientProps) {
 
       {/* Content */}
       <main className="p-6 max-w-3xl">
+        {/* Signals section */}
+        <SignalAlerts signals={signals} />
+
         <div className="mb-6">
           <p className="text-sm text-muted-foreground">
             {sortedItems.length === 0 

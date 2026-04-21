@@ -22,6 +22,12 @@ export default async function TodayPage() {
       .order("severity", { ascending: true })
       .limit(10)
 
+    // Fetch reps for signal generation (with recent activity)
+    const { data: repsData } = await supabase
+      .from("reps")
+      .select(`*`)
+      .limit(50)
+
     if (error || !coachingItems || coachingItems.length === 0) {
       // Use mock data
       const todayItems = mockCoachingInsights
@@ -39,7 +45,7 @@ export default async function TodayPage() {
             } : null,
           }
         })
-      return <TodayClient items={todayItems} />
+      return <TodayClient items={todayItems} reps={mockReps} />
     }
 
     const items = coachingItems.map((item: any) => ({
@@ -62,7 +68,25 @@ export default async function TodayPage() {
       rep: item.rep,
     }))
 
-    return <TodayClient items={items} />
+    // Map repsData to Rep type or use mock reps
+    const repsToUse = repsData && repsData.length > 0 
+      ? repsData.map((r: any) => ({
+          id: r.id,
+          tenantId: r.organization_id,
+          teamId: r.team_id,
+          managerId: r.manager_id,
+          name: r.full_name,
+          email: r.email,
+          role: r.role,
+          hireDate: r.hire_date,
+          trend: r.trend || "stable",
+          scores: r.scores || {},
+          recentActivity: r.recentActivity || [],
+          dataSourceIds: [],
+        }))
+      : mockReps
+
+    return <TodayClient items={items} reps={repsToUse} />
   } catch {
     const todayItems = mockCoachingInsights
       .filter((i) => i.status === "new" || i.status === "reviewing")
@@ -79,6 +103,6 @@ export default async function TodayPage() {
           } : null,
         }
       })
-    return <TodayClient items={todayItems} />
+    return <TodayClient items={todayItems} reps={mockReps} />
   }
 }
