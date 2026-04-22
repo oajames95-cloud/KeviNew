@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
-import { createClient } from "@/lib/supabase/client"
+import { createBrowserClient } from "@/lib/supabase/client"
 import type { Rep } from "@/types"
 import { cn } from "@/lib/utils"
 
@@ -122,7 +122,7 @@ export function CoachingSessionPanel({
   const objective = talkingPoints.find((p) => p.checked)?.text || notes
 
   const handleSave = async () => {
-    const supabase = createClient()
+    const supabase = createBrowserClient()
 
     const { data: sessionData, error: sessionError } = await supabase
       .from("coaching_sessions")
