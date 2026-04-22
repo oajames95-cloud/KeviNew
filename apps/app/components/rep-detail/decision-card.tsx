@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
 import {
   AlertTriangle,
   TrendingUp,
@@ -119,13 +118,11 @@ export function DecisionCard({ rep }: DecisionCardProps) {
         {/* Right: Actions */}
         <div className="flex items-center gap-2 shrink-0">
           {(rep.trend === "at-risk" || rep.trend === "drifting") && insight && (
-            <Link href="/coaching">
-              <Button size="sm" className="h-8 text-xs gap-1.5">
-                <MessageSquare className="w-3.5 h-3.5" />
-                {config.cta}
-                <ChevronRight className="w-3 h-3" />
-              </Button>
-            </Link>
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+              <MessageSquare className="w-3.5 h-3.5" />
+              {config.cta}
+              <ChevronRight className="w-3 h-3" />
+            </Button>
           )}
           {(rep.trend === "stable" || rep.trend === "improving") && (
             <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">

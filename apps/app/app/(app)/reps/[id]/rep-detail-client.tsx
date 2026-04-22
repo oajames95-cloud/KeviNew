@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ChevronLeft, Mail, Calendar } from "lucide-react"
+import { ChevronLeft, Mail, Calendar, BookOpen } from "lucide-react"
 import { AppHeader } from "@/components/shell/app-header"
 import { useMobileSidebar } from "@/components/shell/app-shell"
 import { TrendBadge } from "@/components/shared/trend-badge"
@@ -128,10 +128,12 @@ export function RepDetailClient({ rep, coachingTargets = [] }: RepDetailClientPr
                 <Mail className="w-3.5 h-3.5" />
                 Email
               </Button>
-              <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
-                <Calendar className="w-3.5 h-3.5" />
-                Schedule 1:1
-              </Button>
+              <Link href={`/coaching/${rep.id}`}>
+                <Button size="sm" className="h-8 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700">
+                  <BookOpen className="w-3.5 h-3.5" />
+                  Open Coaching Dashboard
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
