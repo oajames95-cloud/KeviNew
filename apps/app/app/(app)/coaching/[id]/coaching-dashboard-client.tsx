@@ -75,11 +75,17 @@ export function CoachingDashboardClient({
         {/* Active Coaching Plan */}
         {activePlan && (
           <div className="rounded-lg border border-border bg-card p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">Active Coaching Plan</h2>
+            <h2 className="text-lg font-semibold text-foreground">Most Recent Session</h2>
             <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Objective</p>
-              <p className="text-base font-medium text-foreground">{activePlan.objective}</p>
+              <p className="text-sm text-muted-foreground">Date</p>
+              <p className="text-base font-medium text-foreground">{new Date(activePlan.scheduledAt).toLocaleDateString()}</p>
             </div>
+            {activePlan.notes && (
+              <div className="space-y-2 pt-2 border-t">
+                <p className="text-sm text-muted-foreground">Notes</p>
+                <p className="text-sm text-foreground">{activePlan.notes}</p>
+              </div>
+            )}
             {activeTargets.length > 0 && (
               <div className="space-y-2 pt-2 border-t">
                 <p className="text-sm text-muted-foreground">Active Targets</p>
@@ -116,14 +122,17 @@ export function CoachingDashboardClient({
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div>
-                      <p className="font-medium text-foreground">{session.objective}</p>
+                      <p className="font-medium text-foreground">Coaching Session</p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(session.createdAt).toLocaleDateString()}
+                        {new Date(session.scheduledAt).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
                   {session.notes && (
                     <p className="text-sm text-muted-foreground">{session.notes}</p>
+                  )}
+                  {session.actionItems && session.actionItems.length > 0 && (
+                    <p className="text-xs text-muted-foreground mt-2">{session.actionItems.length} action items</p>
                   )}
                 </div>
               ))}

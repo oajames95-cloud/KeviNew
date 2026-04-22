@@ -83,13 +83,17 @@ export default async function CoachingDashboardPage({
     if (sessionsData && sessionsData.length > 0) {
       sessions = sessionsData.map((s: any) => ({
         id: s.id,
+        tenantId: s.organization_id || s.tenant_id || '',
         repId: s.rep_id,
-        objective: s.objective || '',
-        notes: s.notes || '',
-        followUpDate: s.follow_up_date,
-        scheduledAt: s.scheduled_at,
-        createdAt: s.created_at,
-        status: 'completed',
+        repName: rep?.name || '',
+        managerId: s.manager_id || '',
+        scheduledAt: s.scheduled_at || new Date().toISOString(),
+        duration: s.duration || 30,
+        status: s.status || 'completed',
+        talkingPoints: s.talking_points || [],
+        actionItems: s.action_items || [],
+        notes: s.notes,
+        completedAt: s.completed_at,
       }))
     }
 

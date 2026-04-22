@@ -32,7 +32,7 @@ export function CoachingIndexClient({ sessions, reps }: CoachingIndexClientProps
   }
 
   const overdueCount = sessions.filter(
-    s => s.followUpDate && new Date(s.followUpDate) < new Date()
+    s => s.completedAt && new Date(s.completedAt) < new Date()
   ).length
 
   return (
@@ -58,7 +58,7 @@ export function CoachingIndexClient({ sessions, reps }: CoachingIndexClientProps
             <div className="space-y-3">
               {sessions.map(session => {
                 const rep = reps.find(r => r.id === session.repId)
-                const isOverdue = session.followUpDate && new Date(session.followUpDate) < new Date()
+                const isOverdue = session.completedAt && new Date(session.completedAt) < new Date()
                 return (
                   <div
                     key={session.id}
@@ -71,13 +71,13 @@ export function CoachingIndexClient({ sessions, reps }: CoachingIndexClientProps
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground">{rep?.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{session.objective}</p>
+                      <p className="text-xs text-muted-foreground truncate">{session.notes || 'Coaching session'}</p>
                     </div>
                     {isOverdue && (
                       <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
                     )}
                     <span className="text-xs text-muted-foreground flex-shrink-0">
-                      {session.followUpDate ? new Date(session.followUpDate).toLocaleDateString() : 'Pending'}
+                      {session.scheduledAt ? new Date(session.scheduledAt).toLocaleDateString() : 'Pending'}
                     </span>
                   </div>
                 )
