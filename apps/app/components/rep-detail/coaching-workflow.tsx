@@ -128,15 +128,14 @@ export function CoachingWorkflow({
     setPlan({ ...plan, actions: plan.actions.filter(a => a.id !== id) })
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!plan.coachingObjective) {
       alert("Please set a coaching objective")
       return
     }
     if (onSave) {
-      onSave(plan)
+      await onSave(plan)
     }
-    onClose()
   }
 
   const stageProgress = {
