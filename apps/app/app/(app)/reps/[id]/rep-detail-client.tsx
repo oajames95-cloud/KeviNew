@@ -16,7 +16,8 @@ import { RepInsightPanels } from "@/components/rep-detail/rep-insight-panels"
 import { CoachingNotes } from "@/components/rep-detail/coaching-notes"
 import { OutcomesMetrics } from "@/components/shared/outcomes-metrics"
 import { TopPerformerBaseline } from "@/components/shared/top-performer-baseline"
-import { mockTeams, mockTeamSummary } from "@/lib/mock-data"
+import { mockTeams, mockTeamSummary, mockAccounts, mockAccountPatterns } from "@/lib/mock-data"
+import { RepAccounts } from "@/components/rep-detail/rep-accounts"
 import type { Rep } from "@/types"
 
 function initials(name: string) {
@@ -48,6 +49,10 @@ interface RepDetailClientProps {
 
 export function RepDetailClient({ rep, coachingTargets = [] }: RepDetailClientProps) {
   const { toggle } = useMobileSidebar()
+
+  // Get accounts owned by this rep
+  const repAccounts = mockAccounts.filter(a => a.ownerId === rep.id)
+  const repPattern = mockAccountPatterns.find(p => p.repId === rep.id)
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
@@ -147,6 +152,15 @@ export function RepDetailClient({ rep, coachingTargets = [] }: RepDetailClientPr
         </div>
 
         <RepInsightPanels rep={rep} />
+
+        {/* Account Engagement */}
+        {repAccounts.length > 0 && (
+          <RepAccounts 
+            accounts={repAccounts} 
+            repName={rep.name} 
+            pattern={repPattern}
+          />
+        )}
 
         <WorkflowTimeline activity={rep.recentActivity} />
 

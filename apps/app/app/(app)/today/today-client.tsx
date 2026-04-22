@@ -9,8 +9,9 @@ import { useMobileSidebar } from "@/components/shell/app-shell"
 import { SignalAlerts } from "@/components/today/signal-alerts"
 import { ScheduledSessions } from "@/components/today/scheduled-sessions"
 import { ScheduleSessionDialog } from "@/components/today/schedule-session-dialog"
+import { AccountSignals } from "@/components/today/account-signals"
 import { generateSignals } from "@/lib/signal-generator"
-import { mockCoachingInsights } from "@/lib/mock-data"
+import { mockCoachingInsights, mockAccounts } from "@/lib/mock-data"
 
 interface TodayItem extends Omit<CoachingInsight, "repName"> {
   repName: string
@@ -131,9 +132,12 @@ export function TodayClient({ items, reps, sessions }: TodayClientProps) {
         {/* Scheduled Sessions Section */}
         <ScheduledSessions sessions={sessions} />
 
+{/* Account Signals - Stale hot/warm accounts */}
+        <AccountSignals accounts={mockAccounts} />
+
         {/* Signals section */}
         <SignalAlerts signals={signals} />
-
+        
         {/* Coaching Queue Section Header */}
         <div className="mb-4">
           <h2 className="text-sm font-semibold text-foreground mb-1">Coaching Queue</h2>

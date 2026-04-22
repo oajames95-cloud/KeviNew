@@ -12,6 +12,7 @@ import {
   Check,
   LayoutDashboard,
   BookOpen,
+  Building2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { mockManager, mockTenant, mockTeams } from "@/lib/mock-data"
@@ -40,6 +41,11 @@ const navItems = [
     label: "Reps",
     href: "/reps",
     icon: Users,
+  },
+  {
+    label: "Accounts",
+    href: "/accounts",
+    icon: Building2,
   },
   {
     label: "Coaching",

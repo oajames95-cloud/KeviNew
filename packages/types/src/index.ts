@@ -275,6 +275,89 @@ export interface RoleAccess {
 }
 
 // ─────────────────────────────────────────────
+// Accounts - Action-to-Result tracking
+// ─────────────────────────────────────────────
+
+export type AccountStage = "prospecting" | "discovery" | "evaluation" | "negotiation" | "closed-won" | "closed-lost"
+export type AccountHeat = "cold" | "warm" | "hot"
+export type TouchChannel = "email" | "call" | "linkedin" | "meeting" | "sms"
+export type TouchDirection = "outbound" | "inbound"
+export type TouchOutcome = "no_response" | "positive" | "negative" | "neutral" | "meeting_booked" | "deal_moved"
+
+export interface Account {
+  id: string
+  tenantId: string
+  name: string
+  domain?: string
+  industry?: string
+  employeeCount?: number
+  annualRevenue?: number
+  stage: AccountStage
+  heat: AccountHeat
+  ownerId: string // rep_id
+  ownerName: string
+  createdAt: string
+  lastTouchAt?: string
+  daysSinceLastTouch: number
+  totalTouches: number
+  touchesLast7Days: number
+  touchesLast30Days: number
+  meetingsBooked: number
+  pipelineValue?: number
+  winProbability?: number
+  contacts: AccountContact[]
+}
+
+export interface AccountContact {
+  id: string
+  accountId: string
+  name: string
+  title?: string
+  email?: string
+  phone?: string
+  isPrimary: boolean
+  touchCount: number
+  lastTouchAt?: string
+}
+
+export interface AccountTouch {
+  id: string
+  accountId: string
+  contactId?: string
+  repId: string
+  repName: string
+  channel: TouchChannel
+  direction: TouchDirection
+  outcome: TouchOutcome
+  subject?: string
+  notes?: string
+  timestamp: string
+  durationMinutes?: number
+  nextStepScheduled?: boolean
+}
+
+export interface AccountTransition {
+  id: string
+  accountId: string
+  fromStage: AccountStage
+  toStage: AccountStage
+  triggeredBy: string // touch_id
+  timestamp: string
+  daysInPreviousStage: number
+}
+
+export interface AccountPattern {
+  repId: string
+  repName: string
+  avgTouchesToMeeting: number
+  avgDaysToMeeting: number
+  preferredChannelMix: Record<TouchChannel, number>
+  avgTouchesPerWeek: number
+  conversionRate: number
+  winRate: number
+}
+
+// ─────────────────────────────────────────────
 // Dashboard summary
 // ─────────────────────────────────────────────
 
