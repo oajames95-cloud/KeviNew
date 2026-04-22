@@ -61,6 +61,17 @@ export function RepDetailClient({ rep, coachingTargets = [] }: RepDetailClientPr
         subtitle={`${rep.role} · ${teamName(rep.teamId)}`}
         onMenuClick={toggle}
       />
+      <div className="flex items-center justify-between px-4 lg:px-6 py-2 border-b border-border bg-muted/30">
+        <p className="text-xs text-muted-foreground">{repAccounts.length} accounts owned</p>
+        {repAccounts.length > 0 && (
+          <Link
+            href={`/reps/${rep.id}/accounts`}
+            className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+          >
+            View all accounts →
+          </Link>
+        )}
+      </div>
       <main className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6">
         <Link
           href="/reps"

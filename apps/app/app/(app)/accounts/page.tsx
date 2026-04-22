@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
-import { mockAccounts, mockReps } from "@/lib/mock-data"
+import { mockAccounts, mockReps, mockAccountTouches } from "@/lib/mock-data"
 import { AccountsBoardClient } from "./accounts-board-client"
-import type { Account, Rep } from "@/types"
+import type { Account, Rep, AccountTouch } from "@/types"
 
 export const dynamic = "force-dynamic"
 
@@ -9,6 +9,7 @@ export default async function AccountsPage() {
   const supabase = await createClient()
   let accounts: Account[] = mockAccounts
   let reps: Rep[] = mockReps
+  let touches: AccountTouch[] = mockAccountTouches
 
   try {
     // Fetch accounts from database
@@ -22,6 +23,14 @@ export default async function AccountsPage() {
       .from('reps')
       .select('id, full_name, role, trend')
       .order('full_name')
+
+    // Fetch touches for last 7 days for sparklines
+    const sevenDaysAgo = new Date(new Date().getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    const { data: touchesData } = await supabase
+      .from('account_touches')
+      .select('*')
+      .gte('touched_at', sevenDaysAgo)
+      .order('touched_at', { ascending: false })
 
     if (accountsData && accountsData.length > 0) {
       accounts = accountsData.map((a: any) => ({
@@ -72,9 +81,27 @@ export default async function AccountsPage() {
         dataSourceIds: [],
       }))
     }
+
+    if (touchesData && touchesData.length > 0) {
+      touches = touchesData.map((t: any) => ({
+        id: t.id,
+        accountId: t.account_id,
+        contactId: t.contact_id,
+        repId: t.rep_id,
+        repName: t.rep_name || '',
+        channel: t.channel,
+        direction: t.direction,
+        outcome: t.outcome,
+        subject: t.subject,
+        notes: t.notes,
+        timestamp: t.touched_at,
+        durationMinutes: t.duration_minutes,
+        nextStepScheduled: t.next_step_scheduled,
+      }))
+    }
   } catch (error) {
     console.error('[v0] Error fetching accounts:', error)
   }
 
-  return <AccountsBoardClient accounts={accounts} reps={reps} />
+  return <AccountsBoardClient accounts={accounts} reps={reps} touches={touches} />
 }

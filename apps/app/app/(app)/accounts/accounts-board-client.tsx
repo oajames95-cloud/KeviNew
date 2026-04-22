@@ -8,6 +8,7 @@ import { useMobileSidebar } from "@/components/shell/app-shell"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { AccountPulse } from "@/components/accounts/account-pulse"
 import {
   Select,
   SelectContent,
@@ -16,11 +17,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
-import type { Account, Rep, AccountStage, AccountHeat, TouchChannel } from "@/types"
+import type { Account, Rep, AccountStage, AccountHeat, TouchChannel, AccountTouch } from "@/types"
 
 interface AccountsBoardClientProps {
   accounts: Account[]
   reps: Rep[]
+  touches?: AccountTouch[]
 }
 
 // Channel icon mapping
@@ -73,13 +75,22 @@ const stageColors: Record<AccountStage, string> = {
   "closed-lost": "bg-red-100 text-red-700",
 }
 
-export function AccountsBoardClient({ accounts, reps }: AccountsBoardClientProps) {
+export function AccountsBoardClient({ accounts, reps, touches = [] }: AccountsBoardClientProps) {
   const { toggle } = useMobileSidebar()
   const [search, setSearch] = useState("")
   const [stageFilter, setStageFilter] = useState<string>("all")
   const [heatFilter, setHeatFilter] = useState<string>("all")
   const [repFilter, setRepFilter] = useState<string>("all")
   const [viewMode, setViewMode] = useState<"quadrant" | "table">("quadrant")
+
+  // Group touches by account for quick lookup
+  const touchesByAccount = useMemo(() => {
+    return touches.reduce((acc, touch) => {
+      if (!acc[touch.accountId]) acc[touch.accountId] = []
+      acc[touch.accountId].push(touch)
+      return acc
+    }, {} as Record<string, AccountTouch[]>)
+  }, [touches])
 
   // Filter accounts
   const filteredAccounts = useMemo(() => {
@@ -271,6 +282,7 @@ export function AccountsBoardClient({ accounts, reps }: AccountsBoardClientProps
               <thead className="bg-muted/50">
                 <tr>
                   <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Account</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Activity</th>
                   <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Stage</th>
                   <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Heat</th>
                   <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Owner</th>
@@ -293,6 +305,9 @@ export function AccountsBoardClient({ accounts, reps }: AccountsBoardClientProps
                           <p className="text-xs text-muted-foreground">{account.industry}</p>
                         </div>
                       </Link>
+                    </td>
+                    <td className="px-4 py-3">
+                      <AccountPulse touches={touchesByAccount[account.id] || []} width={100} height={24} />
                     </td>
                     <td className="px-4 py-3">
                       <Badge variant="outline" className={cn("text-xs", stageColors[account.stage])}>
