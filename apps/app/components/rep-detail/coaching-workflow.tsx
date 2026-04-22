@@ -45,7 +45,7 @@ interface CoachingWorkflowProps {
   rep: Rep
   isOpen: boolean
   onClose: () => void
-  onSave?: (plan: SessionPlan) => void
+  onSave?: (plan: SessionPlan) => Promise<void>
   sessionContext?: {
     whyItMatters: string
     currentMetrics: Record<string, number>
@@ -129,6 +129,7 @@ export function CoachingWorkflow({
   }
 
   const handleSave = async () => {
+    console.log('[COACHING] Save button clicked, plan:', JSON.stringify(plan))
     if (!plan.coachingObjective) {
       alert("Please set a coaching objective")
       return
