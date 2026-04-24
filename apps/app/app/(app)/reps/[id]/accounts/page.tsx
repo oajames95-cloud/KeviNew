@@ -42,15 +42,18 @@ export default async function RepAccountsPage({
     .eq("id", repId)
     .single()
 
+  if (repError) console.error("[REP ACCOUNTS] rep query error:", repError)
   if (repError || !rep) notFound()
 
-  const { data: accountsData } = await supabase
+  const { data: accountsData, error: accountsError } = await supabase
     .from("accounts")
     .select(
       "id, name, domain, industry, status, heat_score, progress_score, last_touched_at, assigned_rep_id"
     )
     .eq("assigned_rep_id", repId)
     .order("heat_score", { ascending: false })
+
+  if (accountsError) console.error("[REP ACCOUNTS] accounts query error:", accountsError)
 
   const accounts = accountsData ?? []
   const accountIds = accounts.map((a: any) => a.id)
@@ -62,12 +65,15 @@ export default async function RepAccountsPage({
   > = {}
 
   if (accountIds.length > 0) {
-    const { data: touchesData } = await supabase
+    const { data: touchesData, error: touchesError } = await supabase
       .from("account_touches")
       .select("account_id, channel, direction, touched_at")
       .in("account_id", accountIds)
       .gte("touched_at", sevenDaysAgo)
       .order("touched_at", { ascending: false })
+
+    if (touchesError) console.error("[REP ACCOUNTS] touches query error:", touchesError)
+    console.log("[REP ACCOUNTS] fetched", accounts.length, "accounts and", (touchesData ?? []).length, "touches for rep", rep.full_name)
 
     for (const t of touchesData ?? []) {
       if (!touchesByAccount[t.account_id]) touchesByAccount[t.account_id] = []

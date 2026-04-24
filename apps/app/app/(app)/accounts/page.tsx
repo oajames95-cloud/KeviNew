@@ -11,7 +11,10 @@ export const dynamic = "force-dynamic"
 export default async function AccountsPage() {
   const supabase = await createClient()
 
-  const [{ data: accountsData }, { data: repsData }] = await Promise.all([
+  const [
+    { data: accountsData, error: accountsError },
+    { data: repsData, error: repsError },
+  ] = await Promise.all([
     supabase
       .from("accounts")
       .select(
@@ -23,6 +26,9 @@ export default async function AccountsPage() {
       .select("id, full_name")
       .order("full_name"),
   ])
+
+  if (accountsError) console.error("[ACCOUNTS] accounts query error:", accountsError)
+  if (repsError) console.error("[ACCOUNTS] reps query error:", repsError)
 
   const accounts: Account[] = (accountsData ?? []).map((a: any) => ({
     id: a.id,
@@ -57,14 +63,19 @@ export default async function AccountsPage() {
   const touchesByAccount: Record<string, { channel: string; direction: string; touched_at: string }[]> = {}
 
   if (accountIds.length > 0) {
-    const { data: touchesData } = await supabase
+    const { data: touchesData, error: touchesError } = await supabase
       .from("account_touches")
       .select("account_id, channel, direction, touched_at")
       .in("account_id", accountIds)
       .gte("touched_at", sevenDaysAgo)
       .order("touched_at", { ascending: false })
 
-    for (const t of touchesData ?? []) {
+    if (touchesError) console.error("[ACCOUNTS] touches query error:", touchesError)
+
+    const allTouches = touchesData ?? []
+    console.log("[ACCOUNTS] fetched", accounts.length, "accounts and", allTouches.length, "touches")
+
+    for (const t of allTouches) {
       if (!touchesByAccount[t.account_id]) touchesByAccount[t.account_id] = []
       touchesByAccount[t.account_id].push({
         channel: t.channel,
@@ -72,6 +83,8 @@ export default async function AccountsPage() {
         touched_at: t.touched_at,
       })
     }
+  } else {
+    console.log("[ACCOUNTS] fetched", accounts.length, "accounts and 0 touches")
   }
 
   return (

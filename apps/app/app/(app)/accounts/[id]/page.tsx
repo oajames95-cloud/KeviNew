@@ -43,11 +43,16 @@ export default async function AccountDetailPage({
     .eq("id", id)
     .single()
 
+  if (error) console.error("[ACCOUNT DETAIL] account query error:", error)
   if (error || !account) notFound()
 
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
-  const [{ data: touchesData }, { data: repData }, { data: allTouchesData }] =
+  const [
+    { data: touchesData, error: touchesError },
+    { data: repData, error: repError },
+    { data: allTouchesData },
+  ] =
     await Promise.all([
       // Touches for the sparkline (7 days)
       supabase
@@ -71,11 +76,16 @@ export default async function AccountDetailPage({
         .eq("account_id", id),
     ])
 
+  if (touchesError) console.error("[ACCOUNT DETAIL] touches query error:", touchesError)
+  if (repError) console.error("[ACCOUNT DETAIL] rep query error:", repError)
+
   const touches = (touchesData ?? []).map((t: any) => ({
     channel: t.channel,
     direction: t.direction,
     touched_at: t.touched_at,
   }))
+
+  console.log("[ACCOUNT DETAIL] fetched account", account.name, "with", touches.length, "touches (7d)")
 
   const status = account.status as AccountStatus
 
