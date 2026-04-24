@@ -233,6 +233,71 @@ export interface RepTargetProgress {
 }
 
 // ─────────────────────────────────────────────
+// Accounts & Touches
+// ─────────────────────────────────────────────
+
+export type AccountStatus =
+  | "cold"
+  | "touched"
+  | "engaged"
+  | "booked"
+  | "qualified"
+  | "pipeline"
+  | "closed_lost"
+
+export type TouchChannel =
+  | "email"
+  | "linkedin_message"
+  | "linkedin_connect"
+  | "linkedin_inmail"
+  | "call"
+  | "voicemail"
+  | "sequence"
+  | "meeting_booked"
+  | "meeting_held"
+  | "referral"
+
+export type TouchDirection = "outbound" | "inbound"
+
+export interface Account {
+  id: string
+  organizationId: string
+  name: string
+  domain: string | null
+  industry: string | null
+  employeeCount: number | null
+  source: string | null
+  externalId: string | null
+  assignedRepId: string | null
+  status: AccountStatus
+  heatScore: number
+  progressScore: number
+  firstTouchedAt: string | null
+  lastTouchedAt: string | null
+  lastResponseAt: string | null
+  stageEnteredAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AccountTouch {
+  id: string
+  accountId: string
+  contactId: string | null
+  repId: string
+  organizationId: string
+  channel: TouchChannel
+  direction: TouchDirection
+  touchType: string | null
+  subject: string | null
+  bodyPreview: string | null
+  responseReceived: boolean
+  responseAt: string | null
+  touchedAt: string
+  createdAt: string
+}
+
+// ─────────────────────────────────────────────
 // Data Sources
 // ─────────────────────────────────────────────
 
