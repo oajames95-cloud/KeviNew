@@ -26,8 +26,9 @@ import {
   Building2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { mockAccounts } from "@/lib/mock-data"
-import type { Rep, Team, CoachingInsight, PatternShift, AccountHeat } from "@/types"
+import { AccountPulse } from "@/components/accounts/account-pulse"
+import { mockAccounts, mockAccountTouches } from "@/lib/mock-data"
+import type { Rep, Team, CoachingInsight, PatternShift, AccountHeat, AccountTouch } from "@/types"
 
 interface OverviewClientProps {
   reps: Rep[]
@@ -43,6 +44,15 @@ export function OverviewClient({
   patternShifts,
 }: OverviewClientProps) {
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null)
+
+  // Group touches by account
+  const touchesByAccount = useMemo(() => {
+    return mockAccountTouches.reduce((acc, touch) => {
+      if (!acc[touch.accountId]) acc[touch.accountId] = []
+      acc[touch.accountId].push(touch)
+      return acc
+    }, {} as Record<string, AccountTouch[]>)
+  }, [])
 
   const filteredReps = useMemo(() => {
     if (!selectedTeam) return reps
@@ -688,11 +698,11 @@ function AccountHeatSummary() {
                   <Building2 className="w-4 h-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 mb-1">
                     <p className="text-sm font-medium text-foreground truncate">{account.name}</p>
                     <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", heatColors[account.heat])} />
                   </div>
-                  <p className="text-xs text-muted-foreground">{account.ownerName}</p>
+                  <AccountPulse touches={touchesByAccount[account.id] || []} width={100} height={20} />
                 </div>
                 <div className="flex items-center gap-1 text-amber-600 shrink-0">
                   <Clock className="w-3.5 h-3.5" />

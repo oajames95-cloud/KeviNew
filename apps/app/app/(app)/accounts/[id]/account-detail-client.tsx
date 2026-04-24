@@ -27,6 +27,7 @@ import { useMobileSidebar } from "@/components/shell/app-shell"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { AccountPulse } from "@/components/accounts/account-pulse"
 import { cn } from "@/lib/utils"
 import type { Account, AccountTouch, AccountPattern, TouchChannel, TouchOutcome, AccountStage } from "@/types"
 
@@ -194,19 +195,35 @@ export function AccountDetailClient({ account, touches, repPattern }: AccountDet
             </div>
           </div>
 
-          {/* Win probability bar */}
+          {/* Win probability bar + Activity chart */}
           {account.winProbability !== undefined && account.winProbability > 0 && (
+            <div className="mt-6 pt-4 border-t border-border space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-muted-foreground">Win Probability</span>
+                  <span className="text-sm font-semibold text-foreground">{account.winProbability}%</span>
+                </div>
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all"
+                    style={{ width: `${account.winProbability}%` }}
+                  />
+                </div>
+              </div>
+              
+              {/* Activity Pulse - 7 day visualization */}
+              <div>
+                <span className="text-xs font-medium text-muted-foreground block mb-2">7-Day Activity</span>
+                <AccountPulse touches={touches} width={240} height={40} />
+              </div>
+            </div>
+          )}
+          
+          {/* Activity Pulse when no win probability */}
+          {(account.winProbability === undefined || account.winProbability === 0) && (
             <div className="mt-6 pt-4 border-t border-border">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-muted-foreground">Win Probability</span>
-                <span className="text-sm font-semibold text-foreground">{account.winProbability}%</span>
-              </div>
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all"
-                  style={{ width: `${account.winProbability}%` }}
-                />
-              </div>
+              <span className="text-xs font-medium text-muted-foreground block mb-2">7-Day Activity</span>
+              <AccountPulse touches={touches} width={240} height={40} />
             </div>
           )}
         </div>
