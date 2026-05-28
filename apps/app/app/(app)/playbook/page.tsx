@@ -1,11 +1,17 @@
+import { createClient } from "@/lib/supabase/server"
 import { PlaybookClient } from "./playbook-client"
+import { getPlaybookTargets } from "@/lib/targets/playbook-actions"
 
 export const metadata = {
   title: "Playbook | Kevi",
   description: "Configure coaching targets, activity expectations, and alert rules",
 }
 
-// Default playbook configuration
+export const dynamic = "force-dynamic"
+
+// Non-target sections remain local UI config for now (alerting/routing — a
+// separate concern from targets). Only the Targets section persists, via
+// playbook_targets.
 const defaultConfig = {
   targets: {
     weeklyMeetings: 5,
@@ -42,6 +48,25 @@ const defaultConfig = {
   },
 }
 
-export default function PlaybookPage() {
-  return <PlaybookClient initialConfig={defaultConfig} />
+export default async function PlaybookPage() {
+  // Org-level config. Single-tenant for now: use the first organization.
+  // In multi-tenant, derive this from the authenticated user's organization_id.
+  let orgId = ""
+  try {
+    const supabase = await createClient()
+    const { data: org } = await supabase.from("organizations").select("id").limit(1).single()
+    orgId = (org as { id?: string } | null)?.id ?? ""
+  } catch {
+    orgId = ""
+  }
+
+  const initialTargets = await getPlaybookTargets(orgId)
+
+  return (
+    <PlaybookClient
+      initialConfig={defaultConfig}
+      orgId={orgId}
+      initialTargets={initialTargets}
+    />
+  )
 }

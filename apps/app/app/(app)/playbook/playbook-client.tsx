@@ -29,6 +29,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { TargetsSettings } from "@/components/playbook/targets-settings"
+import type { PlaybookTargets } from "@/lib/targets/playbook-actions"
 
 interface PlaybookConfig {
   targets: {
@@ -68,9 +70,11 @@ interface PlaybookConfig {
 
 interface PlaybookClientProps {
   initialConfig: PlaybookConfig
+  orgId: string
+  initialTargets: PlaybookTargets
 }
 
-export function PlaybookClient({ initialConfig }: PlaybookClientProps) {
+export function PlaybookClient({ initialConfig, orgId, initialTargets }: PlaybookClientProps) {
   const [config, setConfig] = useState<PlaybookConfig>(initialConfig)
   const [hasChanges, setHasChanges] = useState(false)
   const [activeSection, setActiveSection] = useState<string>("targets")
@@ -202,101 +206,7 @@ export function PlaybookClient({ initialConfig }: PlaybookClientProps) {
             {/* Section Content */}
             <div className="flex-1">
               {activeSection === "targets" && (
-                <SettingsSection
-                  title="Performance Targets"
-                  description="Set the goals your team should aim for. These are used to calculate attainment and identify underperformers."
-                >
-                  <div className="grid grid-cols-2 gap-6">
-                    <SettingsField
-                      label="Weekly Meetings Target"
-                      hint="Number of meetings each rep should book per week"
-                    >
-                      <Input
-                        type="number"
-                        value={config.targets.weeklyMeetings}
-                        onChange={(e) =>
-                          updateConfig("targets", "weeklyMeetings", Number(e.target.value))
-                        }
-                        className="w-24"
-                      />
-                    </SettingsField>
-
-                    <SettingsField
-                      label="Daily Prospecting Hours"
-                      hint="Target hours spent prospecting each day"
-                    >
-                      <Input
-                        type="number"
-                        step="0.5"
-                        value={config.targets.dailyProspectingHours}
-                        onChange={(e) =>
-                          updateConfig(
-                            "targets",
-                            "dailyProspectingHours",
-                            Number(e.target.value)
-                          )
-                        }
-                        className="w-24"
-                      />
-                    </SettingsField>
-
-                    <SettingsField
-                      label="Daily Calls Target"
-                      hint="Minimum calls per day"
-                    >
-                      <Input
-                        type="number"
-                        value={config.targets.dailyCalls}
-                        onChange={(e) =>
-                          updateConfig("targets", "dailyCalls", Number(e.target.value))
-                        }
-                        className="w-24"
-                      />
-                    </SettingsField>
-
-                    <SettingsField
-                      label="Connect Rate Target"
-                      hint="Target connect rate percentage"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          value={config.targets.connectRateTarget}
-                          onChange={(e) =>
-                            updateConfig(
-                              "targets",
-                              "connectRateTarget",
-                              Number(e.target.value)
-                            )
-                          }
-                          className="w-24"
-                        />
-                        <span className="text-sm text-muted-foreground">%</span>
-                      </div>
-                    </SettingsField>
-
-                    <SettingsField
-                      label="Follow-up Rate Target"
-                      hint="Target follow-up completion rate"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          value={config.targets.followUpRateTarget}
-                          onChange={(e) =>
-                            updateConfig(
-                              "targets",
-                              "followUpRateTarget",
-                              Number(e.target.value)
-                            )
-                          }
-                          className="w-24"
-                        />
-                        <span className="text-sm text-muted-foreground">%</span>
-                      </div>
-                    </SettingsField>
-                  </div>
-                </SettingsSection>
+                <TargetsSettings orgId={orgId} initial={initialTargets} />
               )}
 
               {activeSection === "expectations" && (
