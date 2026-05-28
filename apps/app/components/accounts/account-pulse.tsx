@@ -1,199 +1,221 @@
 "use client"
 
-import type { AccountTouch } from "@/types"
+import type { TouchChannel, TouchDirection } from "@/types"
+
+interface Touch {
+  channel: string
+  direction: string
+  touched_at: string
+}
 
 interface AccountPulseProps {
-  touches: AccountTouch[]
+  touches: Touch[]
   width?: number
   height?: number
 }
 
-// Channel color palette
-const channelColors: Record<string, string> = {
-  email: "#3B82F6",      // blue
-  linkedin: "#0A66C2",   // dark blue
-  call: "#10B981",       // green
-  sequence: "#8B5CF6",   // purple
-  meeting: "#4F46E5",    // indigo
-  sms: "#F59E0B",        // amber
+const CHANNEL_COLORS: Record<string, string> = {
+  email: "#3B82F6",
+  linkedin_message: "#0A66C2",
+  linkedin_connect: "#4D9DE0",
+  linkedin_inmail: "#0A66C2",
+  call: "#10B981",
+  voicemail: "#6EE7B7",
+  sequence: "#8B5CF6",
+  meeting_booked: "#4F46E5",
+  meeting_held: "#4F46E5",
+  referral: "#71717A",
+}
+
+const CHANNEL_LABELS: Record<string, string> = {
+  email: "Email",
+  linkedin_message: "LinkedIn DM",
+  linkedin_connect: "LinkedIn Connect",
+  linkedin_inmail: "LinkedIn InMail",
+  call: "Call",
+  voicemail: "Voicemail",
+  sequence: "Sequence",
+  meeting_booked: "Meeting Booked",
+  meeting_held: "Meeting Held",
+  referral: "Referral",
+}
+
+function relativeTime(isoStr: string): string {
+  const diffMs = Date.now() - new Date(isoStr).getTime()
+  const mins = Math.floor(diffMs / 60_000)
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  return `${days}d ago`
+}
+
+function mostFrequent(channels: string[]): string {
+  const freq: Record<string, number> = {}
+  for (const c of channels) freq[c] = (freq[c] ?? 0) + 1
+  return Object.entries(freq).sort((a, b) => b[1] - a[1])[0][0]
+}
+
+interface Cluster {
+  x: number
+  y: number
+  count: number
+  channel: string
+  touchedAt: string
+  channels: string[]
 }
 
 export function AccountPulse({ touches, width = 120, height = 32 }: AccountPulseProps) {
-  // Filter touches to last 7 days
-  const now = new Date()
-  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-  
-  const recentTouches = touches.filter(t => {
-    const touchDate = new Date(t.timestamp)
-    return touchDate >= sevenDaysAgo && touchDate <= now
-  }).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+  const now = Date.now()
+  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000
+  const start = now - sevenDaysMs
 
-  // If no touches in last 7 days, show empty state
-  if (recentTouches.length === 0) {
+  const PAD = 6
+  const innerW = width - PAD * 2
+  const innerH = height - PAD * 2
+
+  const toX = (ts: number) => PAD + ((ts - start) / sevenDaysMs) * innerW
+  const cy = height / 2
+
+  // Filter to touches within the 7-day window
+  const valid = touches
+    .map((t) => ({ ...t, ts: new Date(t.touched_at).getTime() }))
+    .filter((t) => t.ts >= start && t.ts <= now)
+    .sort((a, b) => a.ts - b.ts)
+
+  // Build clusters: group touches within ~6 hours of each other
+  const SIX_HOURS = 6 * 60 * 60 * 1000
+  const clusters: Cluster[] = []
+  for (const touch of valid) {
+    const last = clusters[clusters.length - 1]
+    if (last && touch.ts - new Date(last.touchedAt).getTime() < SIX_HOURS) {
+      last.count += 1
+      last.channels.push(touch.channel)
+      last.channel = mostFrequent(last.channels)
+      // X position = average of cluster touch times
+      last.x = toX(
+        (new Date(last.touchedAt).getTime() * (last.count - 1) + touch.ts) / last.count
+      )
+    } else {
+      clusters.push({
+        x: toX(touch.ts),
+        y: touch.direction === "outbound" ? height * 0.35 : height * 0.65,
+        count: 1,
+        channel: touch.channel,
+        channels: [touch.channel],
+        touchedAt: touch.touched_at,
+      })
+    }
+  }
+
+  // Gridlines: one per day boundary
+  const gridLines: number[] = []
+  for (let i = 1; i < 7; i++) {
+    gridLines.push(toX(start + i * 24 * 60 * 60 * 1000))
+  }
+
+  // Tooltip content
+  const totalCount = valid.length
+  const lastTouch = valid[valid.length - 1]
+  const channelBreakdown = Object.entries(
+    valid.reduce<Record<string, number>>((acc, t) => {
+      acc[t.channel] = (acc[t.channel] ?? 0) + 1
+      return acc
+    }, {})
+  )
+    .sort((a, b) => b[1] - a[1])
+    .map(([ch, n]) => `${CHANNEL_LABELS[ch] ?? ch} ×${n}`)
+    .join(", ")
+
+  const tooltipText =
+    totalCount === 0
+      ? "No activity in last 7 days"
+      : `${totalCount} touch${totalCount === 1 ? "" : "es"} · last ${relativeTime(lastTouch.touched_at)} · ${channelBreakdown}`
+
+  if (valid.length === 0) {
     return (
-      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="inline-block">
-        <line x1="5" y1={height / 2} x2={width - 5} y2={height / 2} stroke="#e5e7eb" strokeWidth="1" strokeDasharray="2,2" />
-        <text x={width / 2} y={height / 2 + 4} fontSize="9" textAnchor="middle" fill="#9ca3af">
-          No activity
+      <svg
+        width={width}
+        height={height}
+        viewBox={`0 0 ${width} ${height}`}
+        aria-label="No activity in last 7 days"
+        style={{ overflow: "visible" }}
+      >
+        <title>{tooltipText}</title>
+        {/* Dashed center line */}
+        <line
+          x1={PAD}
+          y1={cy}
+          x2={width - PAD}
+          y2={cy}
+          stroke="#A1A1AA"
+          strokeWidth={1}
+          strokeDasharray="3 3"
+        />
+        <text
+          x={width / 2}
+          y={cy + 1}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fontSize={7}
+          fill="#A1A1AA"
+          fontFamily="system-ui, sans-serif"
+        >
+          No activity 7d
         </text>
       </svg>
     )
   }
 
-  const padding = 8
-  const plotWidth = width - padding * 2
-  const centreY = height / 2
-  const verticalOffset = 6 // distance from centre line for inbound/outbound
-
-  // Calculate x positions for each touch (time-based)
-  const touchPositions = recentTouches.map(touch => {
-    const touchDate = new Date(touch.timestamp)
-    const daysOld = (now.getTime() - touchDate.getTime()) / (24 * 60 * 60 * 1000)
-    const xPercent = (7 - daysOld) / 7 // normalize to 0-1, with today on right
-    return {
-      touch,
-      x: padding + xPercent * plotWidth,
-      daysOld,
-    }
-  })
-
-  // Cluster nearby touches (within 6 hours)
-  interface Cluster {
-    touches: typeof recentTouches
-    x: number
-    radius: number
-  }
-  const clusters: Cluster[] = []
-  const usedIndices = new Set<number>()
-
-  touchPositions.forEach((pos, idx) => {
-    if (usedIndices.has(idx)) return
-
-    const cluster = [pos.touch]
-    usedIndices.add(idx)
-    const sixHoursMs = 6 * 60 * 60 * 1000
-
-    touchPositions.forEach((other, otherIdx) => {
-      if (otherIdx <= idx || usedIndices.has(otherIdx)) return
-      const timeDiff = Math.abs(
-        new Date(pos.touch.timestamp).getTime() - new Date(other.touch.timestamp).getTime()
-      )
-      if (timeDiff < sixHoursMs && Math.abs(pos.x - other.x) < 8) {
-        cluster.push(other.touch)
-        usedIndices.add(otherIdx)
-      }
-    })
-
-    const avgX = cluster.reduce((sum, t) => {
-      const tp = touchPositions.find(p => p.touch.id === t.id)
-      return sum + (tp?.x || 0)
-    }, 0) / cluster.length
-
-    const radius = Math.min(6 + cluster.length - 1, 12)
-    clusters.push({ touches: cluster, x: avgX, radius })
-  })
-
-  // Group touches by direction in each cluster
-  const renderCluster = (cluster: Cluster) => {
-    const outbound = cluster.touches.filter(t => t.direction === "outbound")
-    const inbound = cluster.touches.filter(t => t.direction === "inbound")
-
-    const elements: JSX.Element[] = []
-    let key = 0
-
-    // Outbound touches (above centre line)
-    outbound.forEach((touch, idx) => {
-      const angle = (idx - (outbound.length - 1) / 2) * 60
-      const offsetX = Math.sin((angle * Math.PI) / 180) * cluster.radius * 0.6
-      const offsetY = -Math.cos((angle * Math.PI) / 180) * verticalOffset
-
-      elements.push(
-        <circle
-          key={`outbound-${key++}`}
-          cx={cluster.x + offsetX}
-          cy={centreY + offsetY}
-          r={cluster.radius / 2}
-          fill={channelColors[touch.channel] || "#6b7280"}
-          opacity="0.8"
-        />
-      )
-    })
-
-    // Inbound touches (below centre line)
-    inbound.forEach((touch, idx) => {
-      const angle = (idx - (inbound.length - 1) / 2) * 60
-      const offsetX = Math.sin((angle * Math.PI) / 180) * cluster.radius * 0.6
-      const offsetY = Math.cos((angle * Math.PI) / 180) * verticalOffset
-
-      elements.push(
-        <circle
-          key={`inbound-${key++}`}
-          cx={cluster.x + offsetX}
-          cy={centreY + offsetY}
-          r={cluster.radius / 2}
-          fill={channelColors[touch.channel] || "#6b7280"}
-          opacity="0.5"
-        />
-      )
-    })
-
-    return elements
-  }
-
-  // Calculate channel breakdown for tooltip
-  const channelBreakdown = recentTouches.reduce((acc, t) => {
-    acc[t.channel] = (acc[t.channel] || 0) + 1
-    return acc
-  }, {} as Record<string, number>)
-
-  const lastTouch = new Date(recentTouches[recentTouches.length - 1].timestamp)
-  const timeSince = (() => {
-    const hours = Math.floor((now.getTime() - lastTouch.getTime()) / (60 * 60 * 1000))
-    if (hours < 1) return "now"
-    if (hours < 24) return `${hours}h`
-    return `${Math.floor(hours / 24)}d`
-  })()
-
-  const tooltipText = `${recentTouches.length} touches · last ${timeSince} · ${Object.entries(channelBreakdown)
-    .map(([ch, count]) => `${count} ${ch}`)
-    .join(", ")}`
-
   return (
-    <div className="inline-block relative group">
-      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="inline-block">
-        {/* Day gridlines */}
-        {[0, 1, 2, 3, 4, 5, 6, 7].map(day => {
-          const x = padding + (day / 7) * plotWidth
-          return (
-            <line
-              key={`grid-${day}`}
-              x1={x}
-              y1="0"
-              x2={x}
-              y2={height}
-              stroke="#f3f4f6"
-              strokeWidth="0.5"
-            />
-          )
-        })}
+    <svg
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      aria-label={tooltipText}
+      style={{ overflow: "visible" }}
+    >
+      <title>{tooltipText}</title>
 
-        {/* Centre line */}
-        <line x1={padding} y1={centreY} x2={width - padding} y2={centreY} stroke="#e5e7eb" strokeWidth="0.5" />
+      {/* Day gridlines */}
+      {gridLines.map((x, i) => (
+        <line
+          key={i}
+          x1={x}
+          y1={PAD}
+          x2={x}
+          y2={height - PAD}
+          stroke="#E4E4E7"
+          strokeWidth={0.5}
+          opacity={0.5}
+        />
+      ))}
 
-        {/* Render clusters */}
-        {clusters.map((cluster, idx) => (
-          <g key={`cluster-${idx}`}>
-            {renderCluster(cluster)}
-          </g>
-        ))}
-      </svg>
+      {/* Center line */}
+      <line
+        x1={PAD}
+        y1={cy}
+        x2={width - PAD}
+        y2={cy}
+        stroke="#E4E4E7"
+        strokeWidth={1}
+      />
 
-      {/* Tooltip on hover */}
-      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block">
-        <div className="bg-slate-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-          {tooltipText}
-        </div>
-      </div>
-    </div>
+      {/* Touch clusters */}
+      {clusters.map((cluster, i) => {
+        const r = Math.min(3.5 * Math.sqrt(cluster.count), 12)
+        const color = CHANNEL_COLORS[cluster.channel] ?? "#71717A"
+        return (
+          <circle
+            key={i}
+            cx={cluster.x}
+            cy={cluster.y}
+            r={r}
+            fill={color}
+            opacity={0.85}
+          />
+        )
+      })}
+    </svg>
   )
 }

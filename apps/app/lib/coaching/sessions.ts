@@ -11,27 +11,22 @@ export interface SaveSessionResult {
   actionsCount?: number
 }
 
-/**
- * Save a complete coaching session with targets and actions to Supabase
- */
 export async function saveCoachingSession(
   repId: string,
   organizationId: string,
   plan: SessionPlan,
   coachingItemId?: string
 ): Promise<SaveSessionResult> {
+  console.log('[COACHING] saveCoachingSession called with repId:', repId, 'orgId:', organizationId, 'plan:', JSON.stringify(plan))
+
   const supabase = await createClient()
 
   try {
-    // Validate objective is provided
     if (!plan.coachingObjective || !plan.coachingObjective.trim()) {
-      return {
-        success: false,
-        error: 'Coaching objective is required',
-      }
+      return { success: false, error: 'Coaching objective is required' }
     }
 
-    // 1. Create coaching session
+    // 1. Insert coaching session
     const { data: sessionData, error: sessionError } = await supabase
       .from('coaching_sessions')
       .insert({
@@ -48,8 +43,9 @@ export async function saveCoachingSession(
       .select()
       .single()
 
+    console.log('[COACHING] Session insert result - data:', sessionData, 'error:', sessionError)
+
     if (sessionError || !sessionData) {
-      console.error('[v0] Error saving session:', sessionError)
       return {
         success: false,
         error: sessionError?.message || 'Failed to create session',
@@ -58,14 +54,13 @@ export async function saveCoachingSession(
 
     const sessionId = sessionData.id
 
-    // 2. Create coaching targets
+    // 2. Insert coaching targets
     let targetInsertCount = 0
     if (plan.targets.length > 0) {
       const targetsToInsert = plan.targets.map(target => {
         const startDate = new Date()
         const endDate = new Date(startDate)
 
-        // Calculate end date based on period
         switch (target.timeFrame) {
           case 'daily':
             endDate.setDate(endDate.getDate() + 1)
@@ -84,7 +79,7 @@ export async function saveCoachingSession(
           session_id: sessionId,
           metric_type: target.metric,
           target_value: target.targetValue,
-          current_value: 0, // Will be calculated on first refresh
+          current_value: 0,
           target_period: target.timeFrame,
           start_date: startDate.toISOString().split('T')[0],
           end_date: endDate.toISOString().split('T')[0],
@@ -97,24 +92,22 @@ export async function saveCoachingSession(
         .insert(targetsToInsert)
         .select()
 
-      if (targetsError) {
-        console.error('[v0] Error saving targets:', targetsError)
-      } else {
+      console.log('[COACHING] Targets insert result - data:', targetsData, 'error:', targetsError)
+
+      if (!targetsError) {
         targetInsertCount = (targetsData || []).length
       }
     }
 
-    // 3. Create coaching actions
+    // 3. Insert coaching actions — only columns that exist: session_id, rep_id, description, due_date, completed
     let actionInsertCount = 0
     if (plan.actions.length > 0) {
       const actionsToInsert = plan.actions.map(action => ({
-        organization_id: organizationId,
         session_id: sessionId,
         rep_id: repId,
         description: action.text,
-        owner: action.owner === 'rep' ? 'rep' : 'manager',
         due_date: action.dueDate ? new Date(action.dueDate).toISOString().split('T')[0] : null,
-        status: 'open',
+        completed: false,
       }))
 
       const { error: actionsError, data: actionsData } = await supabase
@@ -122,9 +115,9 @@ export async function saveCoachingSession(
         .insert(actionsToInsert)
         .select()
 
-      if (actionsError) {
-        console.error('[v0] Error saving actions:', actionsError)
-      } else {
+      console.log('[COACHING] Actions insert result - data:', actionsData, 'error:', actionsError)
+
+      if (!actionsError) {
         actionInsertCount = (actionsData || []).length
       }
     }
@@ -133,12 +126,11 @@ export async function saveCoachingSession(
     if (coachingItemId) {
       await supabase
         .from('coaching_items')
-        .update({
-          status: 'coached',
-          updated_at: new Date().toISOString(),
-        })
+        .update({ status: 'coached', updated_at: new Date().toISOString() })
         .eq('id', coachingItemId)
     }
+
+    console.log('[COACHING] Save complete - sessionId:', sessionId, 'targets:', targetInsertCount, 'actions:', actionInsertCount)
 
     return {
       success: true,
@@ -147,7 +139,7 @@ export async function saveCoachingSession(
       actionsCount: actionInsertCount,
     }
   } catch (error) {
-    console.error('[v0] Unexpected error saving session:', error)
+    console.error('[COACHING] Unexpected error saving session:', error)
     return {
       success: false,
       error: 'An unexpected error occurred',

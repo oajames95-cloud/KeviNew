@@ -68,15 +68,17 @@ export function CoachingHub({ rep, targets = [], allReps = [] }: CoachingHubProp
     setIsWorkflowOpen(true)
   }
 
-  const handleSaveSession = async (plan: any) => {
+  const handleSaveSession = async (plan: Parameters<typeof saveCoachingSession>[2]) => {
+    console.log('[COACHING] handleSaveSession called with:', JSON.stringify(plan))
     try {
-      // Call server action to save to Supabase
       const result = await saveCoachingSession(
         rep.id,
         rep.tenantId,
         plan,
-        undefined // coachingItemId optional
+        undefined
       )
+
+      console.log('[COACHING] saveCoachingSession returned:', result)
 
       if (result.success) {
         toast.success(`Session saved. ${result.targetsCount || 0} target${(result.targetsCount || 0) !== 1 ? 's' : ''} set for ${rep.name}.`)
@@ -85,7 +87,7 @@ export function CoachingHub({ rep, targets = [], allReps = [] }: CoachingHubProp
         toast.error(result.error || 'Failed to save session')
       }
     } catch (error) {
-      console.error('[v0] Error saving session:', error)
+      console.error('[COACHING] Error saving session:', error)
       toast.error('An error occurred while saving')
     }
   }

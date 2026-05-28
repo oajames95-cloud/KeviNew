@@ -151,6 +151,81 @@ export async function getTeamOutcomesSummary(teamId: string) {
 }
 
 /**
+ * Fetch all accounts for an org with their 7-day touches grouped by account_id
+ */
+export async function getAccountsWithTouches(organizationId: string) {
+  const supabase = await createClient()
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+
+  const [{ data: accounts }, { data: touches }] = await Promise.all([
+    supabase
+      .from("accounts")
+      .select(
+        "id, organization_id, name, domain, industry, employee_count, source, external_id, assigned_rep_id, status, heat_score, progress_score, first_touched_at, last_touched_at, last_response_at, stage_entered_at, created_at, updated_at"
+      )
+      .eq("organization_id", organizationId)
+      .order("heat_score", { ascending: false }),
+    supabase
+      .from("account_touches")
+      .select("account_id, channel, direction, touched_at")
+      .eq("organization_id", organizationId)
+      .gte("touched_at", sevenDaysAgo)
+      .order("touched_at", { ascending: false }),
+  ])
+
+  const touchesByAccount: Record<string, { channel: string; direction: string; touched_at: string }[]> = {}
+  for (const t of touches ?? []) {
+    if (!touchesByAccount[t.account_id]) touchesByAccount[t.account_id] = []
+    touchesByAccount[t.account_id].push({
+      channel: t.channel,
+      direction: t.direction,
+      touched_at: t.touched_at,
+    })
+  }
+
+  return { accounts: accounts ?? [], touchesByAccount }
+}
+
+/**
+ * Fetch accounts assigned to a specific rep with their 7-day touches
+ */
+export async function getRepAccounts(repId: string) {
+  const supabase = await createClient()
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+
+  const { data: accounts } = await supabase
+    .from("accounts")
+    .select(
+      "id, name, domain, industry, status, heat_score, progress_score, last_touched_at, assigned_rep_id"
+    )
+    .eq("assigned_rep_id", repId)
+    .order("heat_score", { ascending: false })
+
+  const accountIds = (accounts ?? []).map((a: any) => a.id)
+  const touchesByAccount: Record<string, { channel: string; direction: string; touched_at: string }[]> = {}
+
+  if (accountIds.length > 0) {
+    const { data: touches } = await supabase
+      .from("account_touches")
+      .select("account_id, channel, direction, touched_at")
+      .in("account_id", accountIds)
+      .gte("touched_at", sevenDaysAgo)
+      .order("touched_at", { ascending: false })
+
+    for (const t of touches ?? []) {
+      if (!touchesByAccount[t.account_id]) touchesByAccount[t.account_id] = []
+      touchesByAccount[t.account_id].push({
+        channel: t.channel,
+        direction: t.direction,
+        touched_at: t.touched_at,
+      })
+    }
+  }
+
+  return { accounts: accounts ?? [], touchesByAccount }
+}
+
+/**
  * Fetch coaching items for dashboard queue
  */
 export async function getCoachingQueue(teamId: string, limit = 10) {
