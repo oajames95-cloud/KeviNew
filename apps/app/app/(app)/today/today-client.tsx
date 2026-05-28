@@ -10,8 +10,9 @@ import { SignalAlerts } from "@/components/today/signal-alerts"
 import { ScheduledSessions } from "@/components/today/scheduled-sessions"
 import { ScheduleSessionDialog } from "@/components/today/schedule-session-dialog"
 import { AccountSignals } from "@/components/today/account-signals"
-import { generateSignals } from "@/lib/signal-generator"
-import { mockCoachingInsights, mockAccounts } from "@/lib/mock-data"
+import { mockCoachingInsights } from "@/lib/mock-data"
+import type { ManagerSignal } from "@/lib/signal-generator"
+import type { Account } from "@/types"
 
 interface TodayItem extends Omit<CoachingInsight, "repName"> {
   repName: string
@@ -28,6 +29,8 @@ interface TodayClientProps {
   items: TodayItem[]
   reps: Rep[]
   sessions: CoachingSession[]
+  signals?: ManagerSignal[]
+  accounts?: Account[]
 }
 
 const severityConfig = {
@@ -65,11 +68,8 @@ const severityConfig = {
   },
 }
 
-export function TodayClient({ items, reps, sessions }: TodayClientProps) {
+export function TodayClient({ items, reps, sessions, signals = [], accounts = [] }: TodayClientProps) {
   const { toggle } = useMobileSidebar()
-  
-  // Generate signals from rep data
-  const signals = generateSignals(reps)
   
   // Sort coaching items by severity
   const sortedItems = [...items].sort((a, b) => {
@@ -132,8 +132,8 @@ export function TodayClient({ items, reps, sessions }: TodayClientProps) {
         {/* Scheduled Sessions Section */}
         <ScheduledSessions sessions={sessions} />
 
-{/* Account Signals - Stale hot/warm accounts */}
-        <AccountSignals accounts={mockAccounts} />
+        {/* Account Signals - Stale hot/warm accounts */}
+        <AccountSignals accounts={accounts} />
 
         {/* Signals section */}
         <SignalAlerts signals={signals} />

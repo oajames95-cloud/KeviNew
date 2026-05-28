@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { TodayClient } from "./today-client"
-import { mockCoachingInsights, mockCoachingSessions, mockReps } from "@/lib/mock-data"
+import { mockCoachingInsights, mockCoachingSessions, mockReps, mockAccounts } from "@/lib/mock-data"
+import { generateSignals } from "@/lib/signal-generator"
 
 export const metadata = {
   title: "Today — Kevi",
@@ -70,7 +71,15 @@ export default async function TodayPage() {
         return sessionDate >= today && sessionDate < tomorrow && s.status === "scheduled"
       })
 
-      return <TodayClient items={todayItems} reps={mockReps} sessions={todaySessions} />
+      return (
+        <TodayClient
+          items={todayItems}
+          reps={mockReps}
+          sessions={todaySessions}
+          signals={generateSignals(mockReps)}
+          accounts={mockAccounts}
+        />
+      )
     }
 
     const items = coachingItems.map((item: any) => ({
@@ -133,7 +142,15 @@ export default async function TodayPage() {
           return sessionDate >= today && sessionDate < tomorrow && s.status === "scheduled"
         })
 
-    return <TodayClient items={items} reps={repsToUse} sessions={sessionsToUse} />
+    return (
+      <TodayClient
+        items={items}
+        reps={repsToUse}
+        sessions={sessionsToUse}
+        signals={generateSignals(repsToUse)}
+        accounts={mockAccounts}
+      />
+    )
   } catch {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -161,6 +178,14 @@ export default async function TodayPage() {
       return sessionDate >= today && sessionDate < tomorrow && s.status === "scheduled"
     })
 
-    return <TodayClient items={todayItems} reps={mockReps} sessions={todaySessions} />
+    return (
+      <TodayClient
+        items={todayItems}
+        reps={mockReps}
+        sessions={todaySessions}
+        signals={generateSignals(mockReps)}
+        accounts={mockAccounts}
+      />
+    )
   }
 }

@@ -1,3 +1,5 @@
+export const revalidate = 60
+
 import { createClient } from "@/lib/supabase/server"
 import { mockReps, mockTeams, mockCoachingInsights, mockPatternShifts } from "@/lib/mock-data"
 import { OverviewClient } from "./overview-client"
@@ -17,11 +19,48 @@ export default async function OverviewPage() {
   try {
     const supabase = await createClient()
 
-    // Fetch teams
-    const { data: teamsData } = await supabase
-      .from("teams")
-      .select("id, name, organization_id")
-      .order("name")
+    // Step 1: Fetch teams, reps, and coaching items in parallel (all independent)
+    const [{ data: teamsData }, { data: repsData }, { data: coachingData }] = await Promise.all([
+      supabase
+        .from("teams")
+        .select("id, name, organization_id")
+        .order("name"),
+      supabase
+        .from("reps")
+        .select(`
+          id,
+          organization_id,
+          team_id,
+          full_name,
+          email,
+          role,
+          hire_date,
+          trend,
+          top_rep_similarity,
+          workflow_drift,
+          prospecting_focus_time,
+          follow_up_discipline,
+          outbound_velocity,
+          signal_confidence
+        `)
+        .order("full_name"),
+      supabase
+        .from("coaching_items")
+        .select(`
+          id,
+          organization_id,
+          rep_id,
+          severity,
+          status,
+          theme,
+          reason,
+          recommended_action,
+          flagged_at,
+          updated_at
+        `)
+        .order("flagged_at", { ascending: false })
+        .limit(10),
+    ])
 
     if (teamsData && teamsData.length > 0) {
       teams = teamsData.map((t: any) => ({
@@ -36,29 +75,8 @@ export default async function OverviewPage() {
       }))
     }
 
-    // Fetch reps with daily metrics
-    const { data: repsData } = await supabase
-      .from("reps")
-      .select(`
-        id,
-        organization_id,
-        team_id,
-        full_name,
-        email,
-        role,
-        hire_date,
-        trend,
-        top_rep_similarity,
-        workflow_drift,
-        prospecting_focus_time,
-        follow_up_discipline,
-        outbound_velocity,
-        signal_confidence
-      `)
-      .order("full_name")
-
     if (repsData && repsData.length > 0) {
-      // Fetch daily metrics for each rep
+      // Step 2: Fetch daily metrics — depends on repIds from previous step
       const repIds = repsData.map((r: any) => r.id)
       const { data: metricsData } = await supabase
         .from("rep_daily_metrics")
@@ -122,24 +140,6 @@ export default async function OverviewPage() {
         }
       })
     }
-
-    // Fetch coaching items for activity drops
-    const { data: coachingData } = await supabase
-      .from("coaching_items")
-      .select(`
-        id,
-        organization_id,
-        rep_id,
-        severity,
-        status,
-        theme,
-        reason,
-        recommended_action,
-        flagged_at,
-        updated_at
-      `)
-      .order("flagged_at", { ascending: false })
-      .limit(10)
 
     if (coachingData && coachingData.length > 0) {
       const repMap = new Map(reps.map((r) => [r.id, r]))

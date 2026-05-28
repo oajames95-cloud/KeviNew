@@ -16,9 +16,9 @@ import { RepInsightPanels } from "@/components/rep-detail/rep-insight-panels"
 import { CoachingNotes } from "@/components/rep-detail/coaching-notes"
 import { OutcomesMetrics } from "@/components/shared/outcomes-metrics"
 import { TopPerformerBaseline } from "@/components/shared/top-performer-baseline"
-import { mockTeams, mockTeamSummary, mockAccounts, mockAccountPatterns } from "@/lib/mock-data"
+import { mockTeamSummary, mockCoachingInsights } from "@/lib/mock-data"
 import { RepAccounts } from "@/components/rep-detail/rep-accounts"
-import type { Rep } from "@/types"
+import type { Rep, Account, AccountPattern, Team } from "@/types"
 
 function initials(name: string) {
   return name
@@ -27,8 +27,8 @@ function initials(name: string) {
     .join("")
 }
 
-function teamName(teamId: string) {
-  return mockTeams.find((t) => t.id === teamId)?.name ?? "—"
+function teamName(teams: Team[], teamId: string) {
+  return teams.find((t) => t.id === teamId)?.name ?? "—"
 }
 
 function tenureLabel(hireDate: string): string {
@@ -45,20 +45,28 @@ function tenureLabel(hireDate: string): string {
 interface RepDetailClientProps {
   rep: Rep
   coachingTargets?: any[]
+  teams?: Team[]
+  repAccounts?: Account[]
+  repPattern?: AccountPattern
 }
 
-export function RepDetailClient({ rep, coachingTargets = [] }: RepDetailClientProps) {
+export function RepDetailClient({
+  rep,
+  coachingTargets = [],
+  teams = [],
+  repAccounts = [],
+  repPattern,
+}: RepDetailClientProps) {
   const { toggle } = useMobileSidebar()
-
-  // Get accounts owned by this rep
-  const repAccounts = mockAccounts.filter(a => a.ownerId === rep.id)
-  const repPattern = mockAccountPatterns.find(p => p.repId === rep.id)
+  const activeInsight = mockCoachingInsights.find(
+    (ci) => ci.repId === rep.id && ci.status !== "coached"
+  )
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       <AppHeader
         title={rep.name}
-        subtitle={`${rep.role} · ${teamName(rep.teamId)}`}
+        subtitle={`${rep.role} · ${teamName(teams, rep.teamId)}`}
         onMenuClick={toggle}
       />
       <div className="flex items-center justify-between px-4 lg:px-6 py-2 border-b border-border bg-muted/30">
@@ -81,9 +89,9 @@ export function RepDetailClient({ rep, coachingTargets = [] }: RepDetailClientPr
           Back to Reps
         </Link>
 
-        <DecisionCard rep={rep} />
+        <DecisionCard rep={rep} insight={activeInsight} />
 
-        <OneOnOnePrep rep={rep} />
+        <OneOnOnePrep rep={rep} activeInsight={activeInsight} />
 
         {/* Active Coaching Plan - positioned prominently */}
         {coachingTargets.length > 0 && (
@@ -118,7 +126,7 @@ export function RepDetailClient({ rep, coachingTargets = [] }: RepDetailClientPr
                 </div>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-muted-foreground">
                   <span>{rep.role}</span>
-                  <span>{teamName(rep.teamId)}</span>
+                  <span>{teamName(teams, rep.teamId)}</span>
                   <span>Tenure: {tenureLabel(rep.hireDate)}</span>
                 </div>
               </div>

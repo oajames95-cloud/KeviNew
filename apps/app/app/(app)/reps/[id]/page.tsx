@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
-import { mockReps } from "@/lib/mock-data"
+import { mockReps, mockTeams, mockAccounts, mockAccountPatterns } from "@/lib/mock-data"
 import { RepDetailClient } from "./rep-detail-client"
 import type { RepTrend, Rep } from "@/types"
 
@@ -24,49 +24,64 @@ export default async function RepDetailPage({ params }: { params: Promise<{ id: 
     if (repError || !repData) {
       const mockRep = mockReps.find((r) => r.id === id)
       if (!mockRep) notFound()
-      return <RepDetailClient rep={mockRep!} coachingTargets={[]} />
+      return (
+        <RepDetailClient
+          rep={mockRep!}
+          coachingTargets={[]}
+          teams={mockTeams}
+          repAccounts={mockAccounts.filter(a => a.ownerId === id)}
+          repPattern={mockAccountPatterns.find(p => p.repId === id)}
+        />
+      )
     }
 
-    // Fetch all reps for comparison analysis
+    // Fetch only score columns for comparison — avoids hydrating 50 full Rep objects
     const { data: allRepsData } = await supabase
       .from("reps")
-      .select("id, organization_id, team_id, full_name, email, role, trend, top_rep_similarity, workflow_drift, prospecting_focus_time, follow_up_discipline, outbound_velocity, signal_confidence")
+      .select("id, top_rep_similarity, workflow_drift, prospecting_focus_time, follow_up_discipline, outbound_velocity, signal_confidence")
       .limit(50)
 
-    // Fetch active coaching targets
-    const { data: targetData } = await supabase
-      .from('coaching_targets')
-      .select('*')
-      .eq('rep_id', id)
-      .eq('status', 'active')
-      .order('created_at', { ascending: false })
+    // Build date bound: last 30 days
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    const cutoff = thirtyDaysAgo.toISOString().split("T")[0]
 
-    // Fetch daily metrics and outcomes in parallel
-    const [{ data: dailyMetrics }, { data: outcomes }] = await Promise.all([
+    // Fetch active coaching targets, daily metrics (30-day bound), and outcomes in parallel
+    const [{ data: targetData }, { data: dailyMetrics }, { data: outcomes }] = await Promise.all([
+      supabase
+        .from('coaching_targets')
+        .select('*')
+        .eq('rep_id', id)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false }),
       supabase
         .from("rep_daily_metrics")
         .select("date, meetings_booked, time_prospecting, calls_dialed, connect_rate, follow_up_rate, time_researching, time_in_apollo, time_in_crm, time_in_email, context_switches, focus_blocks_min")
         .eq("rep_id", id)
-        .order("date", { ascending: false }),
+        .gte("date", cutoff)
+        .order("date", { ascending: false })
+        .limit(30),
       supabase
         .from("rep_outcomes")
         .select("date, calls_dialed, meetings_booked, connect_rate, follow_up_rate")
         .eq("rep_id", id)
-        .order("date", { ascending: false }),
+        .gte("date", cutoff)
+        .order("date", { ascending: false })
+        .limit(30),
     ])
 
-    // Map all reps for comparison
+    // Map all reps for comparison — only score columns are selected
     if (allRepsData && allRepsData.length > 0) {
       allReps = allRepsData.map((r: any) => ({
         id: r.id,
-        tenantId: r.organization_id,
-        teamId: r.team_id,
+        tenantId: "",
+        teamId: "",
         managerId: "",
-        name: r.full_name,
-        email: r.email || "",
-        role: r.role || "SDR",
+        name: "",
+        email: "",
+        role: "SDR" as const,
         hireDate: "",
-        trend: (r.trend ?? "stable") as RepTrend,
+        trend: "stable" as RepTrend,
         scores: {
           topRepSimilarity: r.top_rep_similarity || 0,
           workflowDrift: r.workflow_drift || 0,
@@ -126,10 +141,26 @@ export default async function RepDetailPage({ params }: { params: Promise<{ id: 
       dataSourceIds: [],
     }
 
-    return <RepDetailClient rep={rep} coachingTargets={coachingTargets} />
+    return (
+      <RepDetailClient
+        rep={rep}
+        coachingTargets={coachingTargets}
+        teams={mockTeams}
+        repAccounts={mockAccounts.filter(a => a.ownerId === id)}
+        repPattern={mockAccountPatterns.find(p => p.repId === id)}
+      />
+    )
   } catch (error) {
     const mockRep = mockReps.find((r) => r.id === id)
     if (!mockRep) notFound()
-    return <RepDetailClient rep={mockRep} coachingTargets={[]} />
+    return (
+      <RepDetailClient
+        rep={mockRep}
+        coachingTargets={[]}
+        teams={mockTeams}
+        repAccounts={mockAccounts.filter(a => a.ownerId === id)}
+        repPattern={mockAccountPatterns.find(p => p.repId === id)}
+      />
+    )
   }
 }

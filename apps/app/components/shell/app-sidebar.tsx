@@ -15,7 +15,6 @@ import {
   Building2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { mockManager, mockTenant, mockTeams } from "@/lib/mock-data"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -71,10 +70,12 @@ interface AppSidebarProps {
 export function AppSidebar({ onNavigate }: AppSidebarProps = {}) {
   const pathname = usePathname()
 
-  const initials = mockManager.name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
+  // Static values — sidebar does not need live data on every render
+  const managerName = "Jordan Rivera"
+  const managerRole = "manager"
+  const tenantName = "Acme Corp"
+  const teamName = "West Coast"
+  const userInitials = "JR"
 
   return (
     <aside className="flex flex-col w-52 shrink-0 border-r border-sidebar-border bg-sidebar h-screen sticky top-0">
@@ -94,14 +95,14 @@ export function AppSidebar({ onNavigate }: AppSidebarProps = {}) {
           <DropdownMenuTrigger asChild>
             <button className="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-left hover:bg-sidebar-accent transition-colors group">
               <div className="flex items-center justify-center w-7 h-7 rounded-lg text-[10px] font-bold bg-primary/10 text-primary shrink-0">
-                {mockTenant.name[0]}
+                {tenantName[0]}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-sidebar-accent-foreground truncate">
-                  {mockTenant.name}
+                  {tenantName}
                 </p>
                 <p className="text-[10px] text-sidebar-foreground truncate">
-                  {mockTeams[0].name}
+                  {teamName}
                 </p>
               </div>
               <ChevronsUpDown className="w-3.5 h-3.5 text-sidebar-foreground shrink-0 opacity-50" />
@@ -115,15 +116,12 @@ export function AppSidebar({ onNavigate }: AppSidebarProps = {}) {
             <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2 pb-1">
               Teams
             </DropdownMenuLabel>
-            {mockTeams.map((team, i) => (
-              <DropdownMenuItem key={team.id} className="flex items-center gap-2 cursor-pointer">
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{team.name}</p>
-                  <p className="text-[11px] text-muted-foreground">{team.repCount} reps</p>
-                </div>
-                {i === 0 && <Check className="w-3.5 h-3.5 text-primary" />}
-              </DropdownMenuItem>
-            ))}
+            <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+              <div className="flex-1">
+                <p className="text-sm font-medium">{teamName}</p>
+              </div>
+              <Check className="w-3.5 h-3.5 text-primary" />
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-xs text-muted-foreground cursor-pointer">
               Manage teams
@@ -173,15 +171,15 @@ export function AppSidebar({ onNavigate }: AppSidebarProps = {}) {
             <button className="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-sidebar-accent transition-colors group">
               <Avatar className="w-7 h-7 shrink-0">
                 <AvatarFallback className="text-[11px] font-semibold bg-primary/10 text-primary">
-                  {initials}
+                  {userInitials}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0 text-left">
                 <p className="text-xs font-medium text-sidebar-accent-foreground truncate">
-                  {mockManager.name}
+                  {managerName}
                 </p>
                 <p className="text-[10px] text-sidebar-foreground truncate capitalize">
-                  {mockManager.role}
+                  {managerRole}
                 </p>
               </div>
               <ChevronsUpDown className="w-3.5 h-3.5 text-sidebar-foreground shrink-0 opacity-50" />

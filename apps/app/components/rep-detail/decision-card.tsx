@@ -14,10 +14,10 @@ import {
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { Rep, CoachingInsight } from "@/types"
-import { mockCoachingInsights } from "@/lib/mock-data"
 
 interface DecisionCardProps {
   rep: Rep
+  insight?: CoachingInsight
 }
 
 const trendConfig = {
@@ -55,15 +55,10 @@ const trendConfig = {
   },
 }
 
-export function DecisionCard({ rep }: DecisionCardProps) {
+export function DecisionCard({ rep, insight }: DecisionCardProps) {
   const [dismissed, setDismissed] = useState(false)
   const config = trendConfig[rep.trend]
   const Icon = config.icon
-
-  // Find any active coaching insights for this rep
-  const insight = mockCoachingInsights.find(
-    (ci) => ci.repId === rep.id && ci.status !== "coached"
-  )
 
   if (dismissed && !insight) return null
 

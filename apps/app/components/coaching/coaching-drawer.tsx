@@ -7,8 +7,10 @@ import { SeverityBadge } from "@/components/shared/severity-badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { mockManager } from "@/lib/mock-data"
 import type { CoachingInsight, CoachingNote, CoachingStatus } from "@/types"
+
+const AUTHOR_ID = "m_01"
+const AUTHOR_NAME = "Jordan Rivera"
 import { cn } from "@/lib/utils"
 
 const STATUS_OPTIONS: { label: string; value: CoachingStatus }[] = [
@@ -54,8 +56,8 @@ export function CoachingDrawer({ insight, onClose, onStatusChange }: CoachingDra
       ...prev,
       {
         id: `n_${Date.now()}`,
-        authorId: mockManager.id,
-        authorName: mockManager.name,
+        authorId: AUTHOR_ID,
+        authorName: AUTHOR_NAME,
         content: draft.trim(),
         createdAt: new Date().toISOString(),
       },

@@ -5,7 +5,6 @@ import { AppHeader } from "@/components/shell/app-header"
 import { useMobileSidebar } from "@/components/shell/app-shell"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { mockManager, mockTenant } from "@/lib/mock-data"
 import { Bell, Users, Database, Shield, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -16,13 +15,19 @@ const SECTIONS = [
   { id: "security", label: "Security", icon: Shield },
 ]
 
+// Static defaults — replaced once auth/session is wired up
+const MANAGER_NAME = "Jordan Rivera"
+const MANAGER_EMAIL = "jordan@example.com"
+const MANAGER_ROLE = "manager"
+const TENANT_NAME = "Acme Corp"
+
 export default function SettingsPage() {
   const { toggle } = useMobileSidebar()
   const [activeSection, setActiveSection] = useState("profile")
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
-      <AppHeader title="Settings" subtitle={mockTenant.name} onMenuClick={toggle} />
+      <AppHeader title="Settings" subtitle={TENANT_NAME} onMenuClick={toggle} />
       <div className="flex flex-1 overflow-hidden">
         {/* Settings nav */}
         <nav className="w-48 shrink-0 border-r border-border bg-card p-3 space-y-0.5 hidden sm:block">
@@ -107,8 +112,8 @@ function SectionHeader({ title, description }: { title: string; description?: st
 }
 
 function ProfileSettings() {
-  const [name, setName] = useState(mockManager.name)
-  const [email, setEmail] = useState(mockManager.email)
+  const [name, setName] = useState(MANAGER_NAME)
+  const [email, setEmail] = useState(MANAGER_EMAIL)
 
   return (
     <div>
@@ -134,11 +139,11 @@ function ProfileSettings() {
         </SettingRow>
         <SettingRow label="Role" description="Determines your access level in the platform.">
           <span className="text-xs font-medium capitalize text-foreground px-2 py-1 rounded bg-muted">
-            {mockManager.role}
+            {MANAGER_ROLE}
           </span>
         </SettingRow>
         <SettingRow label="Organization" description="The tenant this account belongs to.">
-          <span className="text-xs text-muted-foreground">{mockTenant.name}</span>
+          <span className="text-xs text-muted-foreground">{TENANT_NAME}</span>
         </SettingRow>
       </div>
       <div className="mt-4 flex justify-end">
