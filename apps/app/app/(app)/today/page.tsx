@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { TodayClient } from "./today-client"
 import { mockCoachingInsights, mockCoachingSessions, mockReps, mockAccounts } from "@/lib/mock-data"
 import { generateSignals } from "@/lib/signal-generator"
+import { syncCoachingItems } from "@/lib/targets/flagging"
 
 export const metadata = {
   title: "Today — Kevi",
@@ -11,7 +12,18 @@ export const metadata = {
 export default async function TodayPage() {
   try {
     const supabase = await createClient()
-    
+
+    // Recompute breach flags on page load (track -> flag). Resolve the org from
+    // the first organization for now (single-tenant); swap to the user's org in
+    // multi-tenant. Best-effort: never let flag sync block rendering the queue.
+    try {
+      const { data: org } = await supabase.from("organizations").select("id").limit(1).single()
+      const orgId = (org as { id?: string } | null)?.id
+      if (orgId) await syncCoachingItems(orgId)
+    } catch (e) {
+      console.error("[today] flag sync skipped:", e)
+    }
+
     // Fetch today's coaching items that need attention
     const { data: coachingItems, error } = await supabase
       .from("coaching_items")
@@ -89,16 +101,17 @@ export default async function TodayPage() {
       repName: item.rep?.full_name || "Unknown",
       teamId: item.team_id,
       teamName: "",
-      managerId: item.manager_id,
+      managerId: null,
       severity: item.severity,
       status: item.status,
-      theme: item.theme,
+      title: item.title,
+      theme: item.coaching_theme,
       reason: item.reason,
-      recommendedAction: item.recommended_action,
-      flaggedAt: item.flagged_at,
+      recommendedAction: item.suggested_action,
+      flaggedAt: item.opened_at,
       updatedAt: item.updated_at,
-      metrics: item.metrics || {},
-      notes: item.notes || [],
+      metrics: {},
+      notes: item.manager_notes ? [item.manager_notes] : [],
       rep: item.rep,
     }))
 
