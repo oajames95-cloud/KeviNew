@@ -70,12 +70,13 @@ interface AppSidebarProps {
 export function AppSidebar({ onNavigate }: AppSidebarProps = {}) {
   const pathname = usePathname()
 
-  // Static values — sidebar does not need live data on every render
-  const managerName = "Jordan Rivera"
+  // Static labels. TODO: make this an async server component that reads the
+  // signed-in user's organization/team instead of hardcoded strings.
+  const managerName = "Manager"
   const managerRole = "manager"
-  const tenantName = "Acme Corp"
-  const teamName = "West Coast"
-  const userInitials = "JR"
+  const tenantName = "Sampl"
+  const teamName = "Sales"
+  const userInitials = "S"
 
   return (
     <aside className="flex flex-col w-52 shrink-0 border-r border-sidebar-border bg-sidebar h-screen sticky top-0">

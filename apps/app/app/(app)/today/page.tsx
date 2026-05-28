@@ -33,7 +33,7 @@ export default async function TodayPage() {
       `)
       .in("status", ["new", "reviewing"])
       .order("severity", { ascending: true })
-      .limit(10)
+      .limit(200)
 
     // Fetch reps for signal generation (with recent activity)
     const { data: repsData } = await supabase

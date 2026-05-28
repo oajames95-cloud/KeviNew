@@ -10,7 +10,6 @@ import { SignalAlerts } from "@/components/today/signal-alerts"
 import { ScheduledSessions } from "@/components/today/scheduled-sessions"
 import { ScheduleSessionDialog } from "@/components/today/schedule-session-dialog"
 import { AccountSignals } from "@/components/today/account-signals"
-import { mockCoachingInsights } from "@/lib/mock-data"
 import type { ManagerSignal } from "@/lib/signal-generator"
 import type { Account } from "@/types"
 
@@ -71,11 +70,42 @@ const severityConfig = {
 export function TodayClient({ items, reps, sessions, signals = [], accounts = [] }: TodayClientProps) {
   const { toggle } = useMobileSidebar()
   
-  // Sort coaching items by severity
-  const sortedItems = [...items].sort((a, b) => {
-    const order = { critical: 0, high: 1, medium: 2, low: 3 }
-    return order[a.severity] - order[b.severity]
-  })
+  // Group coaching items by rep so each rep is ONE card (not one card per
+  // breached metric). Each group carries its worst severity and the list of
+  // individual breach reasons.
+  const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 } as const
+
+  const groupsByRep = new Map<string, {
+    repId: string
+    repName: string
+    worstSeverity: "critical" | "high" | "medium" | "low"
+    isNew: boolean
+    reasons: string[]
+  }>()
+
+  for (const item of items) {
+    const repName = item.rep?.full_name || item.repName
+    const g = groupsByRep.get(item.repId)
+    if (!g) {
+      groupsByRep.set(item.repId, {
+        repId: item.repId,
+        repName,
+        worstSeverity: item.severity,
+        isNew: item.status === "new",
+        reasons: [item.reason].filter(Boolean) as string[],
+      })
+    } else {
+      if (severityOrder[item.severity] < severityOrder[g.worstSeverity]) {
+        g.worstSeverity = item.severity
+      }
+      g.isNew = g.isNew || item.status === "new"
+      if (item.reason) g.reasons.push(item.reason)
+    }
+  }
+
+  const repGroups = Array.from(groupsByRep.values()).sort(
+    (a, b) => severityOrder[a.worstSeverity] - severityOrder[b.worstSeverity]
+  )
 
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -121,7 +151,7 @@ export function TodayClient({ items, reps, sessions, signals = [], accounts = []
           {/* Schedule Session Button */}
           <ScheduleSessionDialog 
             reps={reps} 
-            coachingItems={mockCoachingInsights}
+            coachingItems={[]}
             onSchedule={handleScheduleSession}
           />
         </div>
@@ -142,24 +172,24 @@ export function TodayClient({ items, reps, sessions, signals = [], accounts = []
         <div className="mb-4">
           <h2 className="text-sm font-semibold text-foreground mb-1">Coaching Queue</h2>
           <p className="text-sm text-muted-foreground">
-            {sortedItems.length === 0 
+            {repGroups.length === 0
               ? "No coaching items need attention right now."
-              : `${sortedItems.length} rep${sortedItems.length === 1 ? "" : "s"} need${sortedItems.length === 1 ? "s" : ""} coaching attention.`
+              : `${repGroups.length} rep${repGroups.length === 1 ? "" : "s"} need${repGroups.length === 1 ? "s" : ""} coaching attention.`
             }
           </p>
         </div>
 
         {/* Coaching items list */}
         <div className="flex flex-col gap-3">
-          {sortedItems.map((item) => {
-            const config = severityConfig[item.severity]
+          {repGroups.map((group) => {
+            const config = severityConfig[group.worstSeverity]
             const Icon = config.icon
-            const repName = item.rep?.full_name || item.repName
+            const count = group.reasons.length
 
             return (
               <Link
-                key={item.id}
-                href={`/reps/${item.repId}`}
+                key={group.repId}
+                href={`/reps/${group.repId}`}
                 className={cn(
                   "group flex items-start gap-4 p-4 rounded-xl border transition-all",
                   "bg-card hover:shadow-md hover:border-primary/20",
@@ -174,19 +204,27 @@ export function TodayClient({ items, reps, sessions, signals = [], accounts = []
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-foreground">{repName}</span>
+                    <span className="font-semibold text-foreground">{group.repName}</span>
                     <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded", config.labelBg)}>
                       {config.label}
                     </span>
-                    {item.status === "new" && (
+                    {group.isNew && (
                       <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary/10 text-primary">
                         New
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                    {item.reason}
+                  <p className="text-sm font-medium text-foreground mb-1">
+                    Behind on {count} target{count === 1 ? "" : "s"}
                   </p>
+                  <ul className="text-sm text-muted-foreground mb-2 space-y-0.5">
+                    {group.reasons.slice(0, 3).map((reason, idx) => (
+                      <li key={idx} className="line-clamp-1">• {reason}</li>
+                    ))}
+                    {count > 3 && (
+                      <li className="text-xs text-muted-foreground/70">+{count - 3} more</li>
+                    )}
+                  </ul>
                   <div className="flex items-center gap-2 text-xs text-primary font-medium">
                     Start coaching
                     <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
@@ -198,7 +236,7 @@ export function TodayClient({ items, reps, sessions, signals = [], accounts = []
         </div>
 
         {/* Empty state */}
-        {sortedItems.length === 0 && sessions.length === 0 && signals.length === 0 && (
+        {repGroups.length === 0 && sessions.length === 0 && signals.length === 0 && (
           <div className="text-center py-12">
             <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-foreground mb-2">All caught up!</h3>
