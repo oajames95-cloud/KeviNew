@@ -1,3 +1,5 @@
+"use client"
+
 import type { TouchChannel, TouchDirection } from "@/types"
 
 interface Touch {

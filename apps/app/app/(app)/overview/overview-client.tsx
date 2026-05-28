@@ -23,9 +23,12 @@ import {
   Phone,
   Mail,
   Calendar,
+  Building2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { Rep, Team, CoachingInsight, PatternShift } from "@/types"
+import { AccountPulse } from "@/components/accounts/account-pulse"
+import { mockAccounts, mockAccountTouches } from "@/lib/mock-data"
+import type { Rep, Team, CoachingInsight, PatternShift, AccountHeat, AccountTouch } from "@/types"
 
 interface OverviewClientProps {
   reps: Rep[]
@@ -41,6 +44,15 @@ export function OverviewClient({
   patternShifts,
 }: OverviewClientProps) {
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null)
+
+  // Group touches by account
+  const touchesByAccount = useMemo(() => {
+    return mockAccountTouches.reduce((acc, touch) => {
+      if (!acc[touch.accountId]) acc[touch.accountId] = []
+      acc[touch.accountId].push(touch)
+      return acc
+    }, {} as Record<string, AccountTouch[]>)
+  }, [])
 
   const filteredReps = useMemo(() => {
     if (!selectedTeam) return reps
@@ -462,6 +474,9 @@ export function OverviewClient({
           </div>
         </div>
 
+        {/* Account Heat Summary */}
+        <AccountHeatSummary />
+
         {/* Pattern Shifts Feed */}
         <div className="bg-card border border-border rounded-xl">
           <div className="px-5 py-4 border-b border-border">
@@ -571,6 +586,133 @@ function AttainmentCard({
       </p>
       <p className="text-xs text-muted-foreground mt-1">{label}</p>
       <p className="text-[10px] text-muted-foreground/70 mt-0.5">{subLabel}</p>
+    </div>
+  )
+}
+
+// Account Heat Summary Component
+function AccountHeatSummary() {
+  const accounts = mockAccounts
+  
+  // Heat colors
+  const heatColors: Record<AccountHeat, string> = {
+    hot: "bg-red-500",
+    warm: "bg-amber-500",
+    cold: "bg-slate-400",
+  }
+
+  // Calculate stats
+  const hotAccounts = accounts.filter(a => a.heat === "hot")
+  const warmAccounts = accounts.filter(a => a.heat === "warm")
+  const staleHot = hotAccounts.filter(a => a.daysSinceLastTouch > 3)
+  const staleWarm = warmAccounts.filter(a => a.daysSinceLastTouch > 5)
+  const totalPipeline = accounts.reduce((sum, a) => sum + (a.pipelineValue || 0), 0)
+
+  // Get accounts needing attention (sorted by heat then staleness)
+  const needsAttention = [...staleHot, ...staleWarm].sort((a, b) => {
+    const heatOrder = { hot: 0, warm: 1, cold: 2 }
+    if (heatOrder[a.heat] !== heatOrder[b.heat]) return heatOrder[a.heat] - heatOrder[b.heat]
+    return b.daysSinceLastTouch - a.daysSinceLastTouch
+  }).slice(0, 4)
+
+  return (
+    <div className="grid grid-cols-3 gap-6 mb-8">
+      {/* Account Stats */}
+      <div className="bg-card border border-border rounded-xl">
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Account Heat</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Pipeline distribution</p>
+          </div>
+          <Link
+            href="/accounts"
+            className="text-xs text-primary hover:underline flex items-center gap-1"
+          >
+            View all
+            <ArrowRight className="w-3 h-3" />
+          </Link>
+        </div>
+        <div className="p-5">
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <p className="text-2xl font-bold text-red-600">{hotAccounts.length}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Hot</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-amber-600">{warmAccounts.length}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Warm</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">
+                ${(totalPipeline / 1000).toFixed(0)}k
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Pipeline</p>
+            </div>
+          </div>
+          
+          {/* Heat bar */}
+          <div className="mt-4 h-2 rounded-full bg-muted flex overflow-hidden">
+            <div 
+              className="bg-red-500 h-full" 
+              style={{ width: `${(hotAccounts.length / accounts.length) * 100}%` }} 
+            />
+            <div 
+              className="bg-amber-500 h-full" 
+              style={{ width: `${(warmAccounts.length / accounts.length) * 100}%` }} 
+            />
+            <div 
+              className="bg-slate-400 h-full flex-1" 
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Stale Accounts Alert */}
+      <div className="col-span-2 bg-card border border-border rounded-xl">
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Stale Accounts</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Hot/warm accounts needing follow-up
+            </p>
+          </div>
+          {needsAttention.length > 0 && (
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+              {staleHot.length + staleWarm.length} need attention
+            </span>
+          )}
+        </div>
+        <div className="divide-y divide-border">
+          {needsAttention.length === 0 ? (
+            <div className="px-5 py-8 text-center text-sm text-muted-foreground">
+              All hot/warm accounts are being worked
+            </div>
+          ) : (
+            needsAttention.map(account => (
+              <Link
+                key={account.id}
+                href={`/accounts/${account.id}`}
+                className="flex items-center gap-3 px-5 py-3 hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-muted text-muted-foreground shrink-0">
+                  <Building2 className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="text-sm font-medium text-foreground truncate">{account.name}</p>
+                    <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", heatColors[account.heat])} />
+                  </div>
+                  <AccountPulse touches={touchesByAccount[account.id] || []} width={100} height={20} />
+                </div>
+                <div className="flex items-center gap-1 text-amber-600 shrink-0">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span className="text-xs font-medium">{account.daysSinceLastTouch}d</span>
+                </div>
+              </Link>
+            ))
+          )}
+        </div>
+      </div>
     </div>
   )
 }

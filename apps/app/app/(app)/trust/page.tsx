@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { AppHeader } from "@/components/shell/app-header"
 import { useMobileSidebar } from "@/components/shell/app-shell"
-import { mockDataSources, mockTrustSetting } from "@/lib/mock-data"
 import { 
   CheckCircle2, 
   XCircle, 
@@ -61,10 +60,48 @@ const sourceTypeIcons: Record<string, React.ElementType> = {
   custom: Settings2,
 }
 
+// Static trust configuration — no live data needed for this page
+const STATIC_SOURCES = [
+  {
+    id: "src_sfdc", name: "Salesforce CRM", provider: "Salesforce", type: "crm" as const,
+    status: "connected" as const, retentionDays: 90, lastSyncAt: "2025-01-10T08:00:00Z",
+    collectsFields: ["Activity timestamps", "Call outcomes", "Pipeline stage changes", "Meeting creation events"],
+    doesNotCollect: ["Email/call content", "Personal data", "Customer PII"],
+  },
+  {
+    id: "src_gcal", name: "Google Calendar", provider: "Google", type: "calendar" as const,
+    status: "connected" as const, retentionDays: 90, lastSyncAt: "2025-01-10T07:45:00Z",
+    collectsFields: ["Meeting counts", "Meeting durations", "Block types (internal/external)"],
+    doesNotCollect: ["Meeting titles", "Attendee names", "Notes or descriptions"],
+  },
+  {
+    id: "src_out", name: "Outreach", provider: "Outreach", type: "sequencer" as const,
+    status: "connected" as const, retentionDays: 90, lastSyncAt: "2025-01-10T07:30:00Z",
+    collectsFields: ["Sequence step completion", "Reply rates", "Touch counts"],
+    doesNotCollect: ["Email content", "Reply content", "Contact personal info"],
+  },
+  {
+    id: "src_gong", name: "Gong", provider: "Gong", type: "dialer" as const,
+    status: "error" as const, retentionDays: 90, lastSyncAt: null,
+    collectsFields: ["Call volume", "Call duration", "Talk-to-listen ratio aggregates"],
+    doesNotCollect: ["Call recordings", "Transcripts", "Customer names"],
+  },
+]
+
+const STATIC_SETTINGS = {
+  retentionDays: 90,
+  roleAccess: [
+    { role: "admin", canViewTeamAggregates: true, canViewIndividualScores: true, canViewRawActivity: true, canExportData: true, canManageSettings: true },
+    { role: "manager", canViewTeamAggregates: true, canViewIndividualScores: true, canViewRawActivity: false, canExportData: false, canManageSettings: false },
+    { role: "viewer", canViewTeamAggregates: true, canViewIndividualScores: false, canViewRawActivity: false, canExportData: false, canManageSettings: false },
+    { role: "rep", canViewTeamAggregates: false, canViewIndividualScores: false, canViewRawActivity: false, canExportData: false, canManageSettings: false },
+  ],
+}
+
 export default function TrustPage() {
   const { toggle } = useMobileSidebar()
-  const settings = mockTrustSetting
-  const sources = mockDataSources
+  const settings = STATIC_SETTINGS
+  const sources = STATIC_SOURCES
   const [expandedSource, setExpandedSource] = useState<string | null>(null)
   const [retentionDays, setRetentionDays] = useState(String(settings.retentionDays))
 

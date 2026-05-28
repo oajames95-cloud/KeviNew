@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { RepsList } from "./reps-list"
 import { mockReps, mockTeams, mockCoachingInsights } from "@/lib/mock-data"
 
-export const dynamic = "force-dynamic"
+export const revalidate = 60
 
 export default async function RepsPage() {
   const supabase = await createClient()
@@ -21,6 +21,7 @@ export default async function RepsPage() {
     .from("coaching_items")
     .select("id, organization_id, rep_id, team_id, title, reason, coaching_theme, severity, status, suggested_action, opened_at, closed_at, updated_at")
     .order("opened_at", { ascending: false })
+    .limit(100)
 
   if (repsError || teamsError || coachingError || !repsData?.length) {
     console.log("[RepsPage] Falling back to mock data:", { repsError, teamsError, coachingError })
@@ -60,13 +61,17 @@ export default async function RepsPage() {
     createdAt: t.created_at,
   }))
 
+  // Build O(1) lookup maps to avoid O(n²) .find() inside the coaching map
+  const repById = new Map(reps.map((r: any) => [r.id, r]))
+  const teamById = new Map(teams.map((t: any) => [t.id, t]))
+
   const coachingInsights = coachingData.map((c: any) => ({
     id: c.id,
     tenantId: c.organization_id,
     repId: c.rep_id,
-    repName: reps.find((r: any) => r.id === c.rep_id)?.name || "",
+    repName: repById.get(c.rep_id)?.name || "",
     teamId: c.team_id || "",
-    teamName: teams.find((t: any) => t.id === c.team_id)?.name || "",
+    teamName: teamById.get(c.team_id)?.name || "",
     managerId: "",
     severity: c.severity,
     status: c.status,

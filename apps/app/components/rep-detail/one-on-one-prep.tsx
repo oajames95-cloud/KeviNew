@@ -14,14 +14,15 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import type { Rep } from "@/types"
-import { mockCoachingInsights, mockTeamSummary } from "@/lib/mock-data"
+import type { Rep, CoachingInsight } from "@/types"
+import { mockTeamSummary } from "@/lib/mock-data"
+
+const benchmark = mockTeamSummary.topCohortBenchmark
 
 interface OneOnOnePrepProps {
   rep: Rep
+  activeInsight?: CoachingInsight
 }
-
-const benchmark = mockTeamSummary.topCohortBenchmark
 
 function getTopGaps(rep: Rep) {
   const gaps = [
@@ -87,13 +88,10 @@ function getCommitment(rep: Rep) {
   return commitments[gaps[0].metric] || "Pick one workflow habit to focus on and check in daily for 5 days"
 }
 
-export function OneOnOnePrep({ rep }: OneOnOnePrepProps) {
+export function OneOnOnePrep({ rep, activeInsight }: OneOnOnePrepProps) {
   const [expanded, setExpanded] = useState(true)
   const [checkedItems, setCheckedItems] = useState<Set<number>>(new Set())
   
-  const activeInsight = mockCoachingInsights.find(
-    (ci) => ci.repId === rep.id && ci.status !== "coached"
-  )
   const gaps = getTopGaps(rep)
   const wins = getWins(rep)
   const talkingPoints = getTalkingPoints(rep)

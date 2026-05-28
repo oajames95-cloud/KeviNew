@@ -5,21 +5,23 @@ import { Send } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { mockManager } from "@/lib/mock-data"
 import type { CoachingNote } from "@/types"
+
+const AUTHOR_ID = "m_01"
+const AUTHOR_NAME = "Jordan Rivera"
 
 const SAMPLE_NOTES: CoachingNote[] = [
   {
     id: "n_sample_01",
-    authorId: "m_01",
-    authorName: "Jordan Rivera",
+    authorId: AUTHOR_ID,
+    authorName: AUTHOR_NAME,
     content: "Great call today — discussed the importance of consistent morning blocks for outreach. Rep agreed to try the 9–11am structure this week.",
     createdAt: "2025-01-06T14:30:00Z",
   },
   {
     id: "n_sample_02",
-    authorId: "m_01",
-    authorName: "Jordan Rivera",
+    authorId: AUTHOR_ID,
+    authorName: AUTHOR_NAME,
     content: "Follow-up review: sequence timing improved. Still seeing some drop-off on Day 4 of the cadence — will revisit next week.",
     createdAt: "2025-01-08T10:00:00Z",
   },
@@ -48,8 +50,8 @@ export function CoachingNotes() {
       ...prev,
       {
         id: `n_${Date.now()}`,
-        authorId: mockManager.id,
-        authorName: mockManager.name,
+        authorId: AUTHOR_ID,
+        authorName: AUTHOR_NAME,
         content: draft.trim(),
         createdAt: new Date().toISOString(),
       },
@@ -90,7 +92,7 @@ export function CoachingNotes() {
       <div className="px-5 py-4 border-t border-border flex gap-3">
         <Avatar className="w-7 h-7 shrink-0">
           <AvatarFallback className="text-[11px] font-semibold bg-primary/10 text-primary">
-            {initials(mockManager.name)}
+            {initials(AUTHOR_NAME)}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 space-y-2">
