@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import {
   CalendarDays,
   Users,
@@ -15,6 +15,7 @@ import {
   Building2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { createClient } from "@/lib/supabase/client"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -69,6 +70,14 @@ interface AppSidebarProps {
 
 export function AppSidebar({ onNavigate }: AppSidebarProps = {}) {
   const pathname = usePathname()
+  const router = useRouter()
+
+  const handleSignOut = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push("/auth/login")
+    router.refresh()
+  }
 
   // Static labels. TODO: make this an async server component that reads the
   // signed-in user's organization/team instead of hardcoded strings.
@@ -190,7 +199,7 @@ export function AppSidebar({ onNavigate }: AppSidebarProps = {}) {
             <DropdownMenuItem>Profile</DropdownMenuItem>
             <DropdownMenuItem>Notifications</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">Sign out</DropdownMenuItem>
+            <DropdownMenuItem className="text-destructive" onClick={handleSignOut}>Sign out</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
