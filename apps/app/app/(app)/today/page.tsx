@@ -3,6 +3,7 @@ import { TodayClient } from "./today-client"
 import { mockCoachingInsights, mockCoachingSessions, mockReps, mockAccounts } from "@/lib/mock-data"
 import { generateSignals } from "@/lib/signal-generator"
 import { syncCoachingItems } from "@/lib/targets/flagging"
+import { getCurrentRep, getVisibleRepIds } from "@/lib/identity/current-rep"
 
 export const metadata = {
   title: "Today — Kevi",
@@ -13,18 +14,21 @@ export default async function TodayPage() {
   try {
     const supabase = await createClient()
 
-    // Recompute breach flags on page load (track -> flag). Resolve the org from
-    // the first organization for now (single-tenant); swap to the user's org in
-    // multi-tenant. Best-effort: never let flag sync block rendering the queue.
+    // Resolve the signed-in user to their rep/org/role. The (app) layout guarantees
+    // this is non-null before the page renders, but guard anyway.
+    const current = await getCurrentRep()
+    const visibleRepIds = current ? await getVisibleRepIds(current) : []
+
+    // Recompute breach flags on page load (track -> flag) for the user's own org.
+    // Best-effort: never let flag sync block rendering the queue.
     try {
-      const { data: org } = await supabase.from("organizations").select("id").limit(1).single()
-      const orgId = (org as { id?: string } | null)?.id
-      if (orgId) await syncCoachingItems(orgId)
+      if (current) await syncCoachingItems(current.organizationId)
     } catch (e) {
       console.error("[today] flag sync skipped:", e)
     }
 
-    // Fetch today's coaching items that need attention
+    // Coaching items, scoped: a manager sees their whole org's reps; a rep sees
+    // only their own items.
     const { data: coachingItems, error } = await supabase
       .from("coaching_items")
       .select(`
@@ -32,6 +36,7 @@ export default async function TodayPage() {
         rep:reps(id, full_name, email, role, trend)
       `)
       .in("status", ["new", "reviewing"])
+      .in("rep_id", visibleRepIds.length ? visibleRepIds : ["00000000-0000-0000-0000-000000000000"])
       .order("severity", { ascending: true })
       .limit(200)
 

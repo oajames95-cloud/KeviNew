@@ -1,7 +1,8 @@
-export const revalidate = 60
+export const dynamic = "force-dynamic"
 
 import { createClient } from "@/lib/supabase/server"
-import { mockReps, mockTeams, mockCoachingInsights, mockPatternShifts } from "@/lib/mock-data"
+import { mockPatternShifts } from "@/lib/mock-data"
+import { getCurrentRep, getVisibleRepIds } from "@/lib/identity/current-rep"
 import { OverviewClient } from "./overview-client"
 import type { Rep, RepTrend } from "@/types"
 
@@ -11,19 +12,27 @@ export const metadata = {
 }
 
 export default async function OverviewPage() {
-  let reps: Rep[] = mockReps
-  let teams = mockTeams
-  let coachingInsights = mockCoachingInsights
-  let patternShifts = mockPatternShifts
+  let reps: Rep[] = []
+  let teams: any[] = []
+  let coachingInsights: any[] = []
+  let patternShifts = mockPatternShifts // no real source yet; kept until activity feed exists
 
   try {
     const supabase = await createClient()
+
+    const current = await getCurrentRep()
+    if (!current) {
+      return <OverviewClient reps={[]} teams={[]} coachingInsights={[]} patternShifts={patternShifts} />
+    }
+    const visibleRepIds = await getVisibleRepIds(current)
+    const orgId = current.organizationId
 
     // Step 1: Fetch teams, reps, and coaching items in parallel (all independent)
     const [{ data: teamsData }, { data: repsData }, { data: coachingData }] = await Promise.all([
       supabase
         .from("teams")
         .select("id, name, organization_id")
+        .eq("organization_id", orgId)
         .order("name"),
       supabase
         .from("reps")
@@ -43,6 +52,8 @@ export default async function OverviewPage() {
           outbound_velocity,
           signal_confidence
         `)
+        .eq("organization_id", orgId)
+        .in("id", visibleRepIds.length ? visibleRepIds : ["00000000-0000-0000-0000-000000000000"])
         .order("full_name"),
       supabase
         .from("coaching_items")
@@ -52,13 +63,15 @@ export default async function OverviewPage() {
           rep_id,
           severity,
           status,
-          theme,
+          coaching_theme,
           reason,
-          recommended_action,
-          flagged_at,
+          suggested_action,
+          opened_at,
           updated_at
         `)
-        .order("flagged_at", { ascending: false })
+        .eq("organization_id", orgId)
+        .in("rep_id", visibleRepIds.length ? visibleRepIds : ["00000000-0000-0000-0000-000000000000"])
+        .order("opened_at", { ascending: false })
         .limit(10),
     ])
 
@@ -82,7 +95,7 @@ export default async function OverviewPage() {
         .from("rep_daily_metrics")
         .select("*")
         .in("rep_id", repIds)
-        .order("date", { ascending: false })
+        .order("metric_date", { ascending: false })
         .limit(35) // 7 days * 5 reps max
 
       const metricsMap = new Map<string, any[]>()
@@ -157,10 +170,10 @@ export default async function OverviewPage() {
           teamName: team?.name || "Unknown Team",
           severity: item.severity,
           status: item.status,
-          theme: item.theme,
+          theme: item.coaching_theme,
           reason: item.reason,
-          recommendedAction: item.recommended_action,
-          flaggedAt: item.flagged_at,
+          recommendedAction: item.suggested_action,
+          flaggedAt: item.opened_at,
           updatedAt: item.updated_at,
           metrics: {},
           notes: [],
@@ -168,7 +181,7 @@ export default async function OverviewPage() {
       })
     }
   } catch {
-    // Use mock data on error
+    // On error, render empty real-state rather than mock
   }
 
   return (
