@@ -83,19 +83,19 @@ export default async function RepDetailPage({ params }: { params: Promise<{ id: 
       // Daily workflow metrics — 30-day bounded
       supabase
         .from("rep_daily_metrics")
-        .select("date, meetings_booked, time_prospecting, calls_dialed, connect_rate, follow_up_rate, time_researching, time_in_apollo, time_in_crm, time_in_email, context_switches, focus_blocks_min")
+        .select("metric_date, prospecting_minutes, research_minutes, apollo_minutes, linkedin_minutes, crm_minutes, email_minutes, context_switches, focus_blocks, idle_minutes")
         .eq("rep_id", id)
-        .gte("date", cutoffDate)
-        .order("date", { ascending: false })
+        .gte("metric_date", cutoffDate)
+        .order("metric_date", { ascending: false })
         .limit(30),
 
       // Rep outcomes (pipeline_created) — 30-day bounded
       supabase
         .from("rep_outcomes")
-        .select("date, calls_dialed, meetings_booked, connect_rate, follow_up_rate, pipeline_created")
+        .select("outcome_date, meetings_booked, qualified_meetings, pipeline_created, opportunities_created, positive_replies")
         .eq("rep_id", id)
-        .gte("date", cutoffDate)
-        .order("date", { ascending: false })
+        .gte("outcome_date", cutoffDate)
+        .order("outcome_date", { ascending: false })
         .limit(30),
 
       // This rep's accounts (no date bound — accounts are not time-series)
@@ -180,25 +180,25 @@ export default async function RepDetailPage({ params }: { params: Promise<{ id: 
         signalConfidence: repData.signal_confidence || 0,
       },
       recentActivity: (dailyMetrics ?? []).map((m: any) => ({
-        date: m.date,
-        timeProspecting: m.time_prospecting || 0,
-        timeResearching: m.time_researching || 0,
+        date: m.metric_date,
+        timeProspecting: m.prospecting_minutes || 0,
+        timeResearching: m.research_minutes || 0,
         timeBuildingLists: 0,
-        timeInApollo: m.time_in_apollo || 0,
-        timeInLinkedIn: 0,
-        timeInCRM: m.time_in_crm || 0,
+        timeInApollo: m.apollo_minutes || 0,
+        timeInLinkedIn: m.linkedin_minutes || 0,
+        timeInCRM: m.crm_minutes || 0,
         timeInSequencer: 0,
-        timeInEmail: m.time_in_email || 0,
+        timeInEmail: m.email_minutes || 0,
         timeInCalendar: 0,
-        idleTime: 0,
+        idleTime: m.idle_minutes || 0,
         contextSwitches: m.context_switches || 0,
-        focusBlocksMin: m.focus_blocks_min || 0,
+        focusBlocksMin: m.focus_blocks || 0,
         workdayMinutes: 480,
-        callsDialed: m.calls_dialed || 0,
-        connectRate: (m.connect_rate || 0) * 100,
+        callsDialed: 0,
+        connectRate: 0,
         emailsSent: 0,
-        meetingsBooked: m.meetings_booked || 0,
-        followUpRate: (m.follow_up_rate || 0) * 100,
+        meetingsBooked: 0,
+        followUpRate: 0,
       })),
       dataSourceIds: [],
     }
